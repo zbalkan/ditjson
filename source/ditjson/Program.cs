@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using CommandLine;
@@ -19,6 +20,8 @@ namespace ditjson
             NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.Strict,
             WriteIndented = true,
         };
+
+        private static readonly string[] defaultTables = ["datatable", "link_table"];
 
         /// <summary>
         ///     Application entry point
@@ -61,11 +64,13 @@ namespace ditjson
             Api.JetAttachDatabase(session, opts.Ntds, AttachDatabaseGrbit.ReadOnly);
             Api.JetOpenDatabase(session, opts.Ntds, null, out var dbid, OpenDatabaseGrbit.ReadOnly);
 
-            var ntdsDictionary = new Dictionary<string, object>
+            var tablesToQuery = GetTablesToQuery(opts.Tables, session, dbid);
+
+            var ntdsDictionary = new Dictionary<string, object>();
+            foreach (var table in tablesToQuery)
             {
-                ["datatable"] = TableToList(session, dbid, "datatable"),
-                ["linktable"] = TableToList(session, dbid, "link_table")
-            };
+                ntdsDictionary.Add(table, TableToList(session, dbid, table));
+            }
 
             string json;
             try
@@ -85,6 +90,34 @@ namespace ditjson
             {
                 throw new NtdsException("Failed to write to JSON to file.", ex);
             }
+        }
+
+        private static List<string> GetTablesToQuery(IEnumerable<string>? tablesInOptions, Session session, JET_DBID dbid)
+        {
+            var tablesInDb = Api.GetTableNames(session, dbid);
+
+            List<string> tablesToQuery;
+
+            if (tablesInOptions == null)
+            {
+                // Add only the default tables
+                tablesToQuery = new List<string>(defaultTables);
+            }
+            else
+            {
+                // If user asks all
+                if (tablesInOptions.Count() == 1 && tablesInOptions.First().Equals("*", StringComparison.Ordinal))
+                {
+                    tablesToQuery = new List<string>(tablesInDb);
+                }
+                else
+                {
+                    // if user asks oly specific tables
+                    tablesToQuery = new List<string>(tablesInOptions.Where(t => tablesInDb.Contains(t)));
+                }
+            }
+
+            return tablesToQuery;
         }
 
         /// <summary>

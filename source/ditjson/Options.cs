@@ -1,4 +1,5 @@
-﻿using CommandLine;
+﻿using System.Collections.Generic;
+using CommandLine;
 
 namespace ditjson
 {
@@ -9,5 +10,8 @@ namespace ditjson
     {
         [Option('n', "ntds", Required = true, Default = "", HelpText = "Path to ntds.dit file")]
         public string Ntds { get; set; }
+
+        [Option('t', "tables", Required = false, Default = "", HelpText = "ntds.dit tables to include. Default: datatable, link_table")]
+        public IEnumerable<string> Tables { get; set; }
     }
 }
