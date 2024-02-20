@@ -11,7 +11,10 @@ namespace ditjson
         [Option('n', "ntds", Required = true, Default = "", HelpText = "Path to ntds.dit file")]
         public string Ntds { get; set; }
 
-        [Option('t', "tables", Required = false, Default = "", HelpText = "ntds.dit tables to include. Default: datatable, link_table")]
+        [Option('t', "tables", Required = false, Default = new[] { "datatable", "link_table" }, HelpText = "ntds.dit tables to include.")]
         public IEnumerable<string> Tables { get; set; }
+
+        [Option('s', "schema", Required = false, Default = false, HelpText = "Export schema from ntds.dit file. When provided, -t parameter is ignored.")]
+        public bool Schema { get; set; }
     }
 }

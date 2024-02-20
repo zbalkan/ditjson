@@ -14,15 +14,14 @@ namespace ditjson
 {
     internal static class Program
     {
+        private static readonly string[] defaultTables = ["datatable", "link_table"];
+
         private static readonly JsonSerializerOptions options = new()
         {
             DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
             NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.Strict,
             WriteIndented = true,
         };
-
-        private static readonly string[] defaultTables = ["datatable", "link_table"];
-
         /// <summary>
         ///     Application entry point
         /// </summary>
@@ -64,60 +63,41 @@ namespace ditjson
             Api.JetAttachDatabase(session, opts.Ntds, AttachDatabaseGrbit.ReadOnly);
             Api.JetOpenDatabase(session, opts.Ntds, null, out var dbid, OpenDatabaseGrbit.ReadOnly);
 
-            var tablesToQuery = GetTablesToQuery(opts.Tables, session, dbid);
-
-            var ntdsDictionary = new Dictionary<string, object>();
-            foreach (var table in tablesToQuery)
+            if (opts.Schema)
             {
-                ntdsDictionary.Add(table, TableToList(session, dbid, table));
-            }
+                var csv = GenerateSchemaCsv(session, dbid);
 
-            string json;
-            try
-            {
-                json = JsonSerializer.Serialize(ntdsDictionary, options);
-            }
-            catch (NotSupportedException ex)
-            {
-                throw new NtdsException("Failed to serialize to JSON.", ex);
-            }
-
-            try
-            {
-                File.WriteAllText("ntds.json", json);
-            }
-            catch (Exception ex)
-            {
-                throw new NtdsException("Failed to write to JSON to file.", ex);
-            }
-        }
-
-        private static List<string> GetTablesToQuery(IEnumerable<string>? tablesInOptions, Session session, JET_DBID dbid)
-        {
-            var tablesInDb = Api.GetTableNames(session, dbid);
-
-            List<string> tablesToQuery;
-
-            if (tablesInOptions == null)
-            {
-                // Add only the default tables
-                tablesToQuery = new List<string>(defaultTables);
+                File.WriteAllText("schema.csv", csv);
             }
             else
             {
-                // If user asks all
-                if (tablesInOptions.Count() == 1 && tablesInOptions.First().Equals("*", StringComparison.Ordinal))
+                var tablesToQuery = GetTablesToQuery(opts.Tables, session, dbid);
+
+                var ntdsDictionary = new Dictionary<string, object>();
+                foreach (var table in tablesToQuery)
                 {
-                    tablesToQuery = new List<string>(tablesInDb);
+                    ntdsDictionary.Add(table, TableToList(session, dbid, table));
                 }
-                else
+
+                string json;
+                try
                 {
-                    // if user asks oly specific tables
-                    tablesToQuery = new List<string>(tablesInOptions.Where(t => tablesInDb.Contains(t)));
+                    json = JsonSerializer.Serialize(ntdsDictionary, options);
+                }
+                catch (NotSupportedException ex)
+                {
+                    throw new NtdsException("Failed to serialize to JSON.", ex);
+                }
+
+                try
+                {
+                    File.WriteAllText("ntds.json", json);
+                }
+                catch (Exception ex)
+                {
+                    throw new NtdsException("Failed to write to JSON to file.", ex);
                 }
             }
-
-            return tablesToQuery;
         }
 
         /// <summary>
@@ -140,6 +120,19 @@ namespace ditjson
                 sb.AppendFormat("{0:x2}", b);
             }
 
+            return sb.ToString();
+        }
+
+        private static string GenerateSchemaCsv(Session session, JET_DBID dbid)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("Table,Column Name,Column Type,Is Multivalue");
+
+            // Get all tables and export
+            foreach (var table in GetTablesToQuery(["*"], session, dbid))
+            {
+                PopulateCsv(session, dbid, table, sb);
+            }
             return sb.ToString();
         }
 
@@ -224,6 +217,65 @@ namespace ditjson
             }
 
             return temp.Replace("\0", string.Empty);
+        }
+
+        private static List<string> GetTablesToQuery(IEnumerable<string>? tablesInOptions, Session session, JET_DBID dbid)
+        {
+            var tablesInDb = Api.GetTableNames(session, dbid);
+
+            List<string> tablesToQuery;
+
+            if (tablesInOptions == null)
+            {
+                // Add only the default tables
+                tablesToQuery = new List<string>(defaultTables);
+            }
+            else
+            {
+                // If user asks all
+                if (tablesInOptions.Count() == 1 && tablesInOptions.First().Equals("*", StringComparison.Ordinal))
+                {
+                    tablesToQuery = new List<string>(tablesInDb);
+                }
+                else
+                {
+                    // if user asks oly specific tables
+                    tablesToQuery = new List<string>(tablesInOptions.Where(t => tablesInDb.Contains(t)));
+                }
+            }
+
+            return tablesToQuery;
+        }
+        /// <summary>
+        ///     Populates the <see cref="StringBuilder"/> instance with column data.
+        /// </summary>
+        /// <param name="session">ESENT Session</param>
+        /// <param name="dbid">Handle to the database</param>
+        /// <returns>A <see cref="List{Dictionary{string, object}}"/> containing table data</returns>
+        /// <exception cref="NtdsException"></exception>
+        /// <exception cref="FormatException"></exception>
+        /// <exception cref="OverflowException"></exception>
+        private static void PopulateCsv(Session session, JET_DBID dbid, string tableName, StringBuilder sb)
+        {
+            var columns = new List<ColumnInfo>(Api.GetTableColumns(session, dbid, tableName));
+
+            using var table = new Table(session, dbid, tableName, OpenTableGrbit.ReadOnly);
+            Api.JetSetTableSequential(session, table, SetTableSequentialGrbit.None);
+            Api.MoveBeforeFirst(session, table);
+
+            while (Api.TryMoveNext(session, table))
+            {
+                foreach (var column in columns)
+                {
+                    sb
+                        .Append(table.Name).Append(',')
+                        .Append(column.Name).Append(',')
+                        .Append(column.Coltyp).Append(',')
+                        .AppendLine(column.Grbit.HasFlag(ColumndefGrbit.ColumnMultiValued).ToString());
+                }
+            }
+
+            Api.JetResetTableSequential(session, table, ResetTableSequentialGrbit.None);
         }
 
         /// <summary>
