@@ -13,6 +13,21 @@ The output is a single-file JSON export. The JSON export is opinionated and igno
 
 # Usage
 
+```bash
+ditjson 1.0.0+cda090ef84d50d5f2829883b84d77e9f3b0e64f6
+Copyright © Info-Assure 2015, © Zafer Balkan 2023
+
+  -n, --ntds      Required. (Default: ) Path to ntds.dit file
+
+  -t, --tables    (Default: datatable link_table) ntds.dit tables to include.
+
+  -s, --schema    (Default: false) Export schema from ntds.dit file. When provided, -t parameter is ignored.
+
+  --help          Display this help screen.
+
+  --version       Display version information.
+```
+
 ## Export JSON
 
 Extract the ntds.dit file from the host and run using the following:
@@ -28,18 +43,18 @@ Once the process has been completed it will have generated two output files in t
 - ntds.json
 
 
-## Export JSON  for specific tables
+## Export JSON for specific tables
 
 Extract the ntds.dit file from the host and run using the following:
 
 ```
-ditjson -n path\to\ntds.dit\file -t datatable
+ditjson -n path\to\ntds.dit\file -t datatable link_table sd_table
 ```
 
-This will process only `datatable`.
+This will process `datatable`, `link_table` and `sd_table`. Mind that it is space-separated.
 
 
-## Export JSON  for *all* tables
+## Export JSON for *all* tables
 
 Extract the ntds.dit file from the host and run using the following:
 
@@ -48,6 +63,17 @@ ditjson -n path\to\ntds.dit\file -t *
 ```
 
 This will process all tables inside `ntds.dit` file. Beware of the size.
+
+
+## Export NTDS schema as CSV
+
+Extract the schema of ntds.dit file from the host and run using the following:
+
+```
+ditjson -n path\to\ntds.dit\file -e
+```
+
+This will process all tables inside `ntds.dit` file and export columns: `Table`, `Column Name`, `Column Type`, `Is Multivalue`
 
 
 # Dependencies
