@@ -3,7 +3,7 @@ using System.Diagnostics;
 
 namespace ditjson
 {
-    /// <inheritdoc/>
+    /// <inheritdoc />
     [DebuggerDisplay($"{{{nameof(GetDebuggerDisplay)}(),nq}}")]
     public class NtdsException : Exception
     {
