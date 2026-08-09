@@ -29,6 +29,23 @@ namespace ditjson.Decoders
             try
             {
                 var bytes = HexToBytes(hexValue);
+                if (bytes != null && bytes.Length >= 12 && bytes[1] > 0 &&
+                    bytes[2] == 0 && bytes[3] == 0 && bytes[4] == 0 &&
+                    bytes[5] == 0 && bytes[6] == 0 && bytes[7] == 0)
+                {
+                    // Accept legacy hex values that stored the identifier
+                    // authority as a little-endian 32-bit value.
+                    var authority = BitConverter.ToUInt32(bytes, 8);
+                    if (authority > 0 && authority <= byte.MaxValue)
+                    {
+                        var normalized = new byte[bytes.Length - 4];
+                        normalized[0] = bytes[0];
+                        normalized[1] = (byte)(bytes[1] - 1);
+                        normalized[7] = (byte)authority;
+                        Array.Copy(bytes, 12, normalized, 8, bytes.Length - 12);
+                        bytes = normalized;
+                    }
+                }
                 return Decode(bytes);
             }
             catch

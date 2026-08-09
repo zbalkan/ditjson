@@ -34,7 +34,7 @@ namespace ditjson.Filtering
             if (string.IsNullOrEmpty(user.ObjectSid))
                 user.ObjectSid = null;
 
-            user.UserAccountControl?.RemoveAll(string.IsNullOrEmpty);
+            user.UserAccountControl?.RemoveAll(string.IsNullOrWhiteSpace);
             if (user.UserAccountControl != null && user.UserAccountControl.Count == 0)
                 user.UserAccountControl = null;
         }

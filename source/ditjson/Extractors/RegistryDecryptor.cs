@@ -165,6 +165,11 @@ namespace ditjson.Extractors
             for (var i = 0; i < 256; i++)
                 S[i] = (byte)i;
 
+            // An empty key is not valid RC4 input, but keeping the identity
+            // permutation provides a deterministic, non-throwing fallback.
+            if (key == null || key.Length == 0)
+                return;
+
             var j = 0;
             for (var i = 0; i < 256; i++)
             {

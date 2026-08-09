@@ -24,9 +24,12 @@ namespace ditjson.Decoders
             if (string.IsNullOrEmpty(hexValue))
                 return Guid.Empty;
 
+            if (Guid.TryParse(hexValue, out var guid))
+                return guid;
+
             try
             {
-                var bytes = HexToBytes(hexValue);
+                var bytes = HexToBytes(hexValue.Replace("-", string.Empty));
                 return Decode(bytes);
             }
             catch
