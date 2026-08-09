@@ -7,7 +7,7 @@
     <AssemblyTitle>ditjson</AssemblyTitle>
     <Company>Info-Assure, Zafer Balkan</Company>
     <Product>ditjson</Product>
-    <Copyright>Copyright © Info-Assure 2015, © Zafer Balkan 2023</Copyright>
+    <Copyright>Copyright © Info-Assure 2015, © Zafer Balkan 2026</Copyright>
     <AssemblyVersion>1.0.2</AssemblyVersion>
     <FileVersion>1.0.2</FileVersion>
      <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
@@ -15,6 +15,7 @@
   <ItemGroup>
     <PackageReference Include="CommandLineParser" Version="2.9.1" />
     <PackageReference Include="Microsoft.Database.ManagedEsent" Version="2.0.4" />
+    <InternalsVisibleTo Include="ditjson.Tests" />
   </ItemGroup>
     <PropertyGroup>
         <PublishSingleFile>true</PublishSingleFile>

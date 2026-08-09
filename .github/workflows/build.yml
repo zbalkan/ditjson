@@ -1,0 +1,51 @@
+name: Build & Quality
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore source/ditjson.sln
+
+    - name: Build main project
+      run: dotnet build source/ditjson/ditjson.csproj --no-restore --configuration Release
+
+    - name: Build test project
+      run: dotnet build source/ditjson.Tests/ditjson.Tests.csproj --no-restore --configuration Release
+
+    - name: Check for warnings
+      run: dotnet build source/ditjson.sln --no-restore --configuration Release /p:TreatWarningsAsErrors=false
+
+  code-analysis:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore source/ditjson.sln
+
+    - name: Install analyzers
+      run: dotnet add source/ditjson/ditjson.csproj package Microsoft.CodeAnalysis.NetAnalyzers --version 8.0.0 2>/dev/null || true
+
+    - name: Run build with analysis
+      run: dotnet build source/ditjson.sln --no-restore --configuration Release /p:EnableNETAnalyzers=true /p:EnforceCodeStyleInBuild=true

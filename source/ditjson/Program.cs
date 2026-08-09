@@ -3,8 +3,14 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using CommandLine;
 using Microsoft.Isam.Esent.Interop;
+using ditjson.Extractors;
+using ditjson.Filtering;
+using ditjson.Output;
+
+[assembly: InternalsVisibleTo("ditjson.Tests")]
 
 namespace ditjson
 {
@@ -46,6 +52,7 @@ namespace ditjson
             if (!File.Exists(opts.Ntds))
             {
                 Console.WriteLine($"ntds.dit file does not exist in the path {opts.Ntds}");
+                return;
             }
 
             Api.JetSetSystemParameter(JET_INSTANCE.Nil, JET_SESID.Nil, JET_param.DatabasePageSize, 8192, null);
@@ -62,6 +69,66 @@ namespace ditjson
             {
                 var allTables = FilterTables(["*"], session, dbid);
                 NtdsSchema.ExportSchema(session, dbid, allTables);
+            }
+            else if (opts.Structured)
+            {
+                Console.WriteLine("[*] Extracting structured objects (users, groups, computers)...");
+                var selectedTables = FilterTables(opts.Tables, session, dbid);
+
+                var filterOptions = new ObjectFilter.FilterOptions
+                {
+                    IncludeDeleted = opts.IncludeDeleted,
+                    ExcludeDisabled = opts.ExcludeDisabled,
+                    ExcludeLockedOut = opts.ExcludeLockedOut,
+                    ExcludeComputers = opts.ExcludeComputers,
+                    ExcludeGroups = opts.ExcludeGroups,
+                    IncludeEmptyCollections = opts.IncludeEmptyCollections
+                };
+
+                var (users, groups, computers) = ObjectExtractor.ExtractStructuredObjects(session, dbid, selectedTables, filterOptions);
+
+                Console.WriteLine($"[+] Extracted {users.Count} users, {groups.Count} groups, {computers.Count} computers");
+
+                // Extract supplemental credentials if requested
+                if (opts.ExtractSupplemental)
+                {
+                    SupplementalCredentialsParser.ParseSupplementalCredentials(session, dbid, users, computers);
+                }
+
+                // Extract password hashes and history if SYSTEM hive is provided
+                if ((opts.ExtractHashes || opts.ExtractHistory) && !string.IsNullOrEmpty(opts.SystemHive))
+                {
+                    var bootkey = RegistryDecryptor.ExtractBootkey(opts.SystemHive);
+                    if (bootkey != null && bootkey.Length > 0)
+                    {
+                        if (opts.ExtractHashes)
+                        {
+                            Console.WriteLine("[*] Extracting password hashes...");
+                            PasswordHashDecryptor.DecryptPasswordHashes(session, dbid, users, computers, opts.SystemHive);
+                        }
+
+                        if (opts.ExtractHistory)
+                        {
+                            PasswordHistoryExtractor.ExtractPasswordHistory(session, dbid, users, bootkey);
+                        }
+                    }
+                    else if (opts.ExtractHashes || opts.ExtractHistory)
+                    {
+                        Console.WriteLine("[!] Failed to extract bootkey from SYSTEM hive");
+                    }
+                }
+
+                var json = JsonOutputFormatter.FormatStructuredOutput(users, groups, computers);
+
+                try
+                {
+                    File.WriteAllText("ntds.json", json);
+                    Console.WriteLine("[+] Structured JSON export complete: ntds.json");
+                }
+                catch (Exception ex)
+                {
+                    throw new NtdsException("Failed to write to JSON to file.", ex);
+                }
             }
             else
             {

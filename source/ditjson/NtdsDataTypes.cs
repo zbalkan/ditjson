@@ -39,11 +39,6 @@ namespace ditjson
                 return temp;
             }
 
-            if(columnInfo.Name.Equals("ATTp131353"))
-            {
-                //
-            }
-
             if (columnInfo.Grbit.HasFlag(ColumndefGrbit.ColumnMultiValued))
             {
                 temp = GetMultipleValues(session, table, columnInfo.Columnid, columnInfo.Coltyp);

@@ -1,0 +1,72 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 1.0.3)'
+        required: true
+        type: string
+
+jobs:
+  build-and-release:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+            artifact: ditjson-linux-x64
+          - os: windows-latest
+            rid: win-x64
+            artifact: ditjson-win-x64.exe
+          - os: macos-latest
+            rid: osx-x64
+            artifact: ditjson-osx-x64
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore source/ditjson.sln
+
+    - name: Build
+      run: dotnet build source/ditjson.sln --no-restore --configuration Release
+
+    - name: Run unit tests
+      run: dotnet test source/ditjson.Tests/ditjson.Tests.csproj --no-build --verbosity normal --configuration Release
+
+    - name: Publish
+      run: dotnet publish source/ditjson/ditjson.csproj --no-build --configuration Release --runtime ${{ matrix.rid }} --self-contained
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.artifact }}
+        path: source/ditjson/bin/Release/net8.0/${{ matrix.rid }}/publish/
+
+  create-release:
+    needs: build-and-release
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+
+    - name: Create Release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release create v${{ github.event.inputs.version }} \
+          --title "Release v${{ github.event.inputs.version }}" \
+          --generate-notes \
+          artifacts/**/*

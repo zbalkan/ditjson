@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Isam.Esent.Interop;
 
 namespace ditjson
@@ -9,11 +10,12 @@ namespace ditjson
     {
         private static readonly JsonSerializerOptions options = new()
         {
-            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
-            NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.Strict,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+            NumberHandling = JsonNumberHandling.Strict,
             WriteIndented = true,
             Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         };
+
 
         internal static string TablesToJson(Session session, JET_DBID dbid, List<string> tables)
         {
