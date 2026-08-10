@@ -1,19 +1,16 @@
 # ditjson - NTDS.dit JSON extractor
 
-`ditjson` extracts a complete, structured Active Directory dataset from an offline
-`NTDS.dit` database. It decodes directory objects and relationships automatically;
-when the matching `SYSTEM` registry hive is supplied, it also attempts every
-supported boot-key-dependent credential extraction.
+`ditjson` extracts a complete, structured Active Directory dataset from an offline `NTDS.dit` database. It decodes directory objects and relationships automatically; when the matching `SYSTEM` registry hive is supplied, it also attempts every supported boot-key-dependent credential extraction.
+
+Unlike the original export workflow, `ditjson` does not produce CSV tables for separate Python scripts to process. It reads the ESE database, identifies and decodes the useful directory objects itself, and emits a single JSON document. In other words, the output is a structured Active Directory dataset rather than an undifferentiated dump of every ESE table and column.
 
 ## Features
 
 - Extracts users, computers, groups, decoded attributes, and relationships.
 - Includes all available objects; filtering and analysis belong in downstream tools.
-- Decrypts NT and LM hashes, password history, and supported supplemental
-  credentials when a matching `SYSTEM` hive is available.
+- Decrypts NT and LM hashes, password history, and supported supplemental credentials when a matching `SYSTEM` hive is available.
 - Emits one structured JSON document suitable for redirection or pipelines.
-- Keeps progress, warnings, and errors on standard error so standard output remains
-  machine-readable.
+- Keeps progress, warnings, and errors on standard error so standard output remains machine-readable.
 
 ## Requirements and installation
 
@@ -26,7 +23,7 @@ Build from source:
 ```bash
 git clone https://github.com/zbalkan/ditjson.git
 cd ditjson
-dotnet build source/ditjson.sln --configuration Release
+dotnet build src/ditjson.slnx --configuration Release
 ```
 
 ## Usage
@@ -66,13 +63,10 @@ Options:
   -v, --version       Show version
 ```
 
-No extraction switches are needed. The supplied input determines the available
-capabilities, and structured extraction is always performed.
-
+No extraction switches are needed. The supplied input determines the available capabilities, and structured extraction is always performed.
 ## Pipelines and diagnostics
 
-Without `-o`, stdout contains only JSON. Operational messages are written to stderr,
-so the result can be queried directly:
+Without `-o`, stdout contains only JSON. Operational messages are written to stderr, so the result can be queried directly:
 
 ```bash
 ditjson ntds.dit SYSTEM | jq '.users[]'
@@ -94,13 +88,25 @@ Filtering is intentionally delegated to tools such as `jq` or DuckDB. For exampl
 
 ```bash
 ditjson ntds.dit SYSTEM |
-  jq '.users[] | select(.samAccountName == "Administrator")'
+  jq '.users[] | select(.SamAccountName == "Administrator")'
 ```
+
+Query user and computer names together with any decrypted NT or LM hashes:
+
+```bash
+ditjson ntds.dit SYSTEM |
+  jq '(
+    .users[] | {objectType: "user", name: (.SamAccountName // .Name), hashes: .passwordHashes}
+  ), (
+    .computers[] | {objectType: "computer", name: (.SamAccountName // .Name), hashes: .passwordHashes}
+  ) | select(.hashes.ntHash != null or .hashes.lmHash != null)'
+```
+
+Hash fields are only available when the database contains the corresponding credentials and the matching `SYSTEM` hive was supplied.
 
 ## Output
 
-The result is a single JSON object with metadata and collections for extracted
-users, groups, and computers:
+The result is a single JSON object with metadata and collections for extracted users, groups, and computers:
 
 ```json
 {
@@ -117,10 +123,7 @@ users, groups, and computers:
 }
 ```
 
-Credential properties are populated when they are present and can be interpreted.
-A matching `SYSTEM` hive enables boot-key derivation, password hash decryption,
-password-history extraction, and supplemental-credential parsing. Recoverable
-record-level problems are reported to stderr without adding text to the JSON stream.
+Credential properties are populated when they are present and can be interpreted. A matching `SYSTEM` hive enables boot-key derivation, password hash decryption, password-history extraction, and supplemental-credential parsing. Recoverable record-level problems are reported to stderr without adding text to the JSON stream.
 
 ## Exit codes
 
@@ -135,8 +138,13 @@ Fatal errors do not emit a partial JSON document to stdout.
 Run the test suite:
 
 ```bash
-dotnet test source/ditjson.sln
+dotnet test src/ditjson.slnx
 ```
 
-The source is organized into models, decoders, extractors, filtering helpers, and
-JSON output formatting under `source/ditjson`.
+The source is organized into models, decoders, extractors, filtering helpers, and JSON output formatting under `src/ditjson`.
+
+## Acknowledgments and project history
+
+`ditjson` is a fork and continuation of BSI's original [`dumpntds`](https://github.com/bsi-group/dumpntds) project. The original tool's important optimization was to read only the small subset of the more than 1,000 `datatable` columns needed by the downstream workflow, instead of exporting the entire ESE database.
+
+That workflow generated `datatable.csv` and `linktable.csv`, which were then processed by Python tools such as [`ntdsxtract`](https://github.com/csababarta/ntdsxtract). This fork no longer uses those scripts or intermediate tables: it incorporates the relevant `ntdsxtract` functionality, performs semantic extraction directly, and has one output format, JSON. We gratefully acknowledge the original `dumpntds`, `ntdsxtract`, and `libesedb` authors whose work established the foundations and workflow that this project builds upon.
