@@ -24,7 +24,7 @@
     <PropertyGroup>
         <PublishSingleFile>true</PublishSingleFile>
         <PublishReadyToRun>true</PublishReadyToRun>
-        <!-- ManagedEsent is not trim-compatible. Publishing the complete application is required to preserve its reflection-based code. -->
-        <PublishTrimmed>false</PublishTrimmed>
+        <PublishTrimmed>true</PublishTrimmed>
+        <PublishAot>true</PublishAot>
     </PropertyGroup>
 </Project>
