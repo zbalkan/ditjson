@@ -79,4 +79,25 @@ public class TimestampDecoderTests
         // Assert
         Assert.IsNull(result);
     }
+
+    [TestMethod]
+    public void DecodeDsTime_WithDatabaseTimestamp_ReturnsIso8601String()
+    {
+        // These bytes were previously decoded as the corrupt UTF-16 string
+        // "铃ඒ\u0003\u0000" instead of as a DSTIME integer.
+        var result = TimestampDecoder.DecodeDsTime(13112612035L);
+
+        Assert.AreEqual("2016-07-10T08:13:55.0000000Z", result);
+    }
+
+    [DataTestMethod]
+    [DataRow(0L)]
+    [DataRow(-1L)]
+    [DataRow(long.MaxValue)]
+    public void DecodeDsTime_WithUnsetOrInvalidValue_ReturnsNull(long value)
+    {
+        var result = TimestampDecoder.DecodeDsTime(value);
+
+        Assert.IsNull(result);
+    }
 }

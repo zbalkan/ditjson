@@ -30,10 +30,10 @@ namespace ditjson.Extractors
                 OperatingSystemVersion = ColumnExtractor.GetString(session, table, columnDict,
                     "ATTm590188")!,
 
-                WhenCreated = ColumnExtractor.GetString(session, table, columnDict,
-                    "ATTl131074")!,
-                WhenChanged = ColumnExtractor.GetString(session, table, columnDict,
-                    "ATTl131075")!,
+                WhenCreated = TimestampDecoder.DecodeDsTime(ColumnExtractor.GetInt64(
+                    session, table, columnDict, "ATTl131074"))!,
+                WhenChanged = TimestampDecoder.DecodeDsTime(ColumnExtractor.GetInt64(
+                    session, table, columnDict, "ATTl131075"))!,
 
                 PasswordLastSet = TimestampDecoder.DecodeFromInt64(ColumnExtractor.GetInt64(
                     session, table, columnDict, "ATTq589920"))!,

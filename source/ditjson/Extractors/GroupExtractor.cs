@@ -24,10 +24,10 @@ namespace ditjson.Extractors
                 SamAccountName = ColumnExtractor.GetString(session, table, columnDict,
                     NtdsColumnNames.SamAccountName)!,
 
-                WhenCreated = ColumnExtractor.GetString(session, table, columnDict,
-                    "ATTl131074")!,
-                WhenChanged = ColumnExtractor.GetString(session, table, columnDict,
-                    "ATTl131075")!,
+                WhenCreated = TimestampDecoder.DecodeDsTime(ColumnExtractor.GetInt64(
+                    session, table, columnDict, "ATTl131074"))!,
+                WhenChanged = TimestampDecoder.DecodeDsTime(ColumnExtractor.GetInt64(
+                    session, table, columnDict, "ATTl131075"))!,
 
                 IsDeleted = ColumnExtractor.GetInt32(session, table, columnDict,
                     "ATTi131120") != 0,

@@ -4,7 +4,8 @@ namespace ditjson.Decoders
 {
     internal static class TimestampDecoder
     {
-        private const long FileTimeEpoch = 116444736000000000;
+        private static readonly DateTime DsTimeEpoch =
+            new DateTime(1601, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
         internal static string? Decode(string? hexValue)
         {
@@ -19,6 +20,23 @@ namespace ditjson.Decoders
         }
 
         internal static string? DecodeFromInt64(long filetime) => ConvertFileTimeToUtc(filetime);
+
+        // Values using the LDAP UTC-time syntax are stored in ntds.dit as DSTIME:
+        // whole seconds elapsed since 1601-01-01, rather than as strings or FILETIME.
+        internal static string? DecodeDsTime(long seconds)
+        {
+            if (seconds <= 0)
+                return null;
+
+            try
+            {
+                return DsTimeEpoch.AddSeconds(seconds).ToString("O");
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                return null;
+            }
+        }
 
         private static string? ConvertFileTimeToUtc(long filetime)
         {
