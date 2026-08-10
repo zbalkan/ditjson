@@ -189,9 +189,9 @@ namespace ditjson.Querying
         private sealed class Q
         {
             public int C { get; set; }
-            public string[] F { get; init; }
-            public string N { get; init; }
-            public Func<JsonElement, bool> P { get; init; }
+            public string[]? F { get; init; }
+            public string? N { get; init; }
+            public Func<JsonElement, bool>? P { get; init; }
         }
     }
 }

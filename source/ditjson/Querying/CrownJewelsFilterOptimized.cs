@@ -255,9 +255,9 @@ namespace ditjson.Querying
         private sealed class QueryContext
         {
             public int Count { get; set; }
-            public string[] Fields { get; init; }
-            public string Name { get; init; }
-            public Func<JsonElement, bool> Predicate { get; init; }
+            public string[]? Fields { get; init; }
+            public string? Name { get; init; }
+            public Func<JsonElement, bool>? Predicate { get; init; }
         }
     }
 }
