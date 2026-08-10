@@ -17,7 +17,7 @@ namespace ditjson.Output
         });
 
         public static string FormatStructuredOutput(List<User> users, List<Group> groups,
-            List<Computer> computers)
+            List<Computer> computers, DatabaseFileMetadata? database = null)
         {
             var output = new StructuredOutput
             {
@@ -27,7 +27,8 @@ namespace ditjson.Output
                     DitjsonVersion = "1.0.2",
                     TotalUsers = users.Count,
                     TotalGroups = groups.Count,
-                    TotalComputers = computers.Count
+                    TotalComputers = computers.Count,
+                    Database = database
                 },
                 Users = users,
                 Groups = groups,
@@ -94,6 +95,9 @@ namespace ditjson.Output
 
         [JsonPropertyName("totalUsers")]
         public int TotalUsers { get; set; }
+
+        [JsonPropertyName("database")]
+        public DatabaseFileMetadata? Database { get; set; }
     }
 
     internal sealed class StructuredOutput
@@ -140,6 +144,7 @@ namespace ditjson.Output
     // the surrounding model graph evolves.
     [JsonSerializable(typeof(User))]
     [JsonSerializable(typeof(Computer))]
+    [JsonSerializable(typeof(DatabaseFileMetadata))]
     [JsonSerializable(typeof(PasswordHashes))]
     [JsonSerializable(typeof(SupplementalCredentials))]
     [JsonSerializable(typeof(KerberosKey))]

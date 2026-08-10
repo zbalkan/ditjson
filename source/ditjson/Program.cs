@@ -84,6 +84,7 @@ namespace ditjson
         [RequiresUnreferencedCode("Calls ditjson.Output.JsonOutputFormatter.FormatStructuredOutput")]
         private static string Extract(Options opts)
         {
+            var databaseMetadata = DatabaseFileMetadata.Read(opts.Ntds);
             Api.JetSetSystemParameter(JET_INSTANCE.Nil, JET_SESID.Nil, JET_param.DatabasePageSize, 8192, null);
 
             using var instance = new Instance("ditjson");
@@ -127,7 +128,7 @@ namespace ditjson
 
             return opts.Timeline
                 ? JsonOutputFormatter.FormatTimeline(users, groups, computers)
-                : JsonOutputFormatter.FormatStructuredOutput(users, groups, computers);
+                : JsonOutputFormatter.FormatStructuredOutput(users, groups, computers, databaseMetadata);
         }
 
         internal static void ReportCredentialResults(List<Models.User> users,

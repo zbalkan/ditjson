@@ -104,6 +104,26 @@ public class JsonOutputFormatterTests
     }
 
     [TestMethod]
+    public void FormatStructuredOutput_IncludesDatabaseMetadataWhenProvided()
+    {
+        var database = new DatabaseFileMetadata
+        {
+            Signature = "0x89ABCDEF",
+            PageSize = 8192,
+            IsDirty = true
+        };
+
+        var json = JsonOutputFormatter.FormatStructuredOutput([], [], [], database);
+
+        using var document = JsonDocument.Parse(json);
+        var serializedDatabase = document.RootElement.GetProperty("metadata").GetProperty("database");
+        Assert.AreEqual("0x89ABCDEF", serializedDatabase.GetProperty("signature").GetString());
+        Assert.AreEqual((uint)8192, serializedDatabase.GetProperty("pageSize").GetUInt32());
+        Assert.IsTrue(serializedDatabase.GetProperty("isDirty").GetBoolean());
+        Assert.IsFalse(serializedDatabase.TryGetProperty("detachTime", out _));
+    }
+
+    [TestMethod]
     public void FormatStructuredOutput_UsesCompactMemberOfReferences()
     {
         var user = new User
