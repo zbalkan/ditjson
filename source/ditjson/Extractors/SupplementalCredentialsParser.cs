@@ -8,9 +8,6 @@ namespace ditjson.Extractors
 {
     internal static class SupplementalCredentialsParser
     {
-        // Attribute ID for supplementalCredentials
-        private const int SUPPLEMENTAL_CREDENTIALS_ATTR = 589985;  // ATTr589985
-
         internal static void ParseSupplementalCredentials(Session session, JET_DBID dbid, List<User> users, List<Computer> computers)
         {
             Console.WriteLine("[*] Parsing supplemental credentials...");
@@ -35,7 +32,8 @@ namespace ditjson.Extractors
                 var recordId = 1;
                 while (Api.TryMoveNext(session, table))
                 {
-                    if (userDict.TryGetValue(recordId, out var user))
+                    var currentRecordId = ColumnExtractor.GetRecordId(session, table, columnDict, recordId);
+                    if (userDict.TryGetValue(currentRecordId, out var user))
                     {
                         ParseCredentialsForUser(session, table, columnDict, user);
                     }
@@ -67,7 +65,8 @@ namespace ditjson.Extractors
                 var recordId = 1;
                 while (Api.TryMoveNext(session, table))
                 {
-                    if (computerDict.TryGetValue(recordId, out var computer))
+                    var currentRecordId = ColumnExtractor.GetRecordId(session, table, columnDict, recordId);
+                    if (computerDict.TryGetValue(currentRecordId, out var computer))
                     {
                         ParseCredentialsForComputer(session, table, columnDict, computer);
                     }
@@ -87,7 +86,8 @@ namespace ditjson.Extractors
         {
             try
             {
-                var supCredData = ColumnExtractor.GetBinary(session, table, columnDict, "ATTx589985");
+                var supCredData = ColumnExtractor.GetBinary(
+                    session, table, columnDict, NtdsColumnNames.SupplementalCredentials);
                 if (supCredData == null || supCredData.Length == 0)
                     return;
 
@@ -115,7 +115,8 @@ namespace ditjson.Extractors
         {
             try
             {
-                var supCredData = ColumnExtractor.GetBinary(session, table, columnDict, "ATTx589985");
+                var supCredData = ColumnExtractor.GetBinary(
+                    session, table, columnDict, NtdsColumnNames.SupplementalCredentials);
                 if (supCredData == null || supCredData.Length == 0)
                     return;
 

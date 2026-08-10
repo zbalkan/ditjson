@@ -14,29 +14,29 @@ namespace ditjson.Extractors
             var group = new Group
             {
                 RecordId = recordId,
-                Name = ColumnExtractor.GetString(session, table, columnDict, "ATTm131220")!,
+                Name = ColumnExtractor.GetString(session, table, columnDict, "ATTm589825")!,
                 ObjectClass = "group",
                 ObjectGuid = GuidDecoder.Decode(ColumnExtractor.GetBinary(session, table,
-                    columnDict, "ATTb131353")),
+                    columnDict, "ATTk589826")),
                 ObjectSid = SidDecoder.Decode(ColumnExtractor.GetBinary(session, table,
-                    columnDict, "ATTr589970")),
+                    columnDict, NtdsColumnNames.ObjectSid)),
 
                 SamAccountName = ColumnExtractor.GetString(session, table, columnDict,
-                    "ATTm590045")!,
+                    NtdsColumnNames.SamAccountName)!,
 
-                WhenCreated = TimestampDecoder.DecodeFromInt64(ColumnExtractor.GetInt64(
-                    session, table, columnDict, "ATTq591520"))!,
-                WhenChanged = TimestampDecoder.DecodeFromInt64(ColumnExtractor.GetInt64(
-                    session, table, columnDict, "ATTq591521"))!,
+                WhenCreated = ColumnExtractor.GetString(session, table, columnDict,
+                    "ATTl131074")!,
+                WhenChanged = ColumnExtractor.GetString(session, table, columnDict,
+                    "ATTl131075")!,
 
-                IsDeleted = ColumnExtractor.GetString(session, table, columnDict,
-                    "ATTb589825") != null,
+                IsDeleted = ColumnExtractor.GetInt32(session, table, columnDict,
+                    "ATTi131120") != 0,
 
                 Members = []
             };
 
             var groupTypeValue = ColumnExtractor.GetInt32(session, table, columnDict,
-                "ATTj590077");
+                "ATTj590574");
             if (groupTypeValue != 0)
             {
                 group.GroupType = FlagsDecoder.DecodeGroupType(groupTypeValue);

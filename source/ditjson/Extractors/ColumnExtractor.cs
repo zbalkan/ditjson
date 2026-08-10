@@ -76,5 +76,11 @@ namespace ditjson.Extractors
         }
 
         internal static bool HasColumn(Dictionary<string, JET_COLUMNID> columnDict, string fieldName) => columnDict.ContainsKey(fieldName);
+
+        internal static int GetRecordId(Session session, JET_TABLEID table,
+            IDictionary<string, JET_COLUMNID> columnDict, int fallback) =>
+            columnDict.ContainsKey("DNT_col")
+                ? GetInt32(session, table, columnDict, "DNT_col")
+                : fallback;
     }
 }

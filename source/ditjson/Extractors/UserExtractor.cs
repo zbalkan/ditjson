@@ -14,50 +14,50 @@ namespace ditjson.Extractors
             var user = new User
             {
                 RecordId = recordId,
-                Name = ColumnExtractor.GetString(session, table, columnDict, "ATTm131220")!,
+                Name = ColumnExtractor.GetString(session, table, columnDict, "ATTm589825")!,
                 ObjectClass = "user",
                 ObjectGuid = GuidDecoder.Decode(ColumnExtractor.GetBinary(session, table,
-                    columnDict, "ATTb131353")),
+                    columnDict, "ATTk589826")),
                 ObjectSid = SidDecoder.Decode(ColumnExtractor.GetBinary(session, table,
-                    columnDict, "ATTr589970")),
+                    columnDict, NtdsColumnNames.ObjectSid)),
 
                 SamAccountName = ColumnExtractor.GetString(session, table, columnDict,
-                    "ATTm590045")!,
+                    NtdsColumnNames.SamAccountName)!,
                 UserPrincipalName = ColumnExtractor.GetString(session, table, columnDict,
                     "ATTm590480")!,
 
-                WhenCreated = TimestampDecoder.DecodeFromInt64(ColumnExtractor.GetInt64(
-                    session, table, columnDict, "ATTq591520"))!,
-                WhenChanged = TimestampDecoder.DecodeFromInt64(ColumnExtractor.GetInt64(
-                    session, table, columnDict, "ATTq591521"))!,
+                WhenCreated = ColumnExtractor.GetString(session, table, columnDict,
+                    "ATTl131074")!,
+                WhenChanged = ColumnExtractor.GetString(session, table, columnDict,
+                    "ATTl131075")!,
 
                 PasswordLastSet = TimestampDecoder.DecodeFromInt64(ColumnExtractor.GetInt64(
-                    session, table, columnDict, "ATTq589926"))!,
+                    session, table, columnDict, "ATTq589920"))!,
                 LastLogon = TimestampDecoder.DecodeFromInt64(ColumnExtractor.GetInt64(
                     session, table, columnDict, "ATTq589876"))!,
                 LastLogonTimeStamp = TimestampDecoder.DecodeFromInt64(
                     ColumnExtractor.GetInt64(session, table, columnDict,
-                        "ATTq591983"))!,
+                        "ATTq591520"))!,
                 AccountExpires = TimestampDecoder.DecodeFromInt64(ColumnExtractor.GetInt64(
-                    session, table, columnDict, "ATTq589960"))!,
+                    session, table, columnDict, "ATTq589983"))!,
                 BadPwdTime = TimestampDecoder.DecodeFromInt64(ColumnExtractor.GetInt64(
-                    session, table, columnDict, "ATTq591923"))!,
+                    session, table, columnDict, "ATTq589873"))!,
 
                 LogonCount = ColumnExtractor.GetInt32(session, table, columnDict,
-                    "ATTj589875"),
+                    "ATTj589993"),
                 BadPwdCount = ColumnExtractor.GetInt32(session, table, columnDict,
-                    "ATTj589874"),
+                    "ATTj589836"),
                 PrimaryGroupId = ColumnExtractor.GetInt32(session, table, columnDict,
-                    "ATTj590077"),
+                    "ATTj589922"),
                 DialInAccessPermission = ColumnExtractor.GetInt32(session, table, columnDict,
-                    "ATTj590093"),
+                    "ATTi590943"),
 
-                IsDeleted = ColumnExtractor.GetString(session, table, columnDict,
-                    "ATTb589825") != null
+                IsDeleted = ColumnExtractor.GetInt32(session, table, columnDict,
+                    "ATTi131120") != 0
             };
 
             var uacValue = ColumnExtractor.GetInt32(session, table, columnDict,
-                "ATTj590084");
+                "ATTj589832");
             if (uacValue != 0)
             {
                 user.UserAccountControl = FlagsDecoder.DecodeUAC(uacValue);
@@ -68,7 +68,7 @@ namespace ditjson.Extractors
             }
 
             var samAccountTypeValue = ColumnExtractor.GetInt32(session, table, columnDict,
-                "ATTj590046");
+                NtdsColumnNames.SamAccountType);
             if (samAccountTypeValue != 0)
             {
                 user.SamAccountType = FlagsDecoder.DecodeSAMAccountType(samAccountTypeValue);

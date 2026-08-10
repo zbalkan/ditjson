@@ -1,59 +1,31 @@
-using System;
-using Microsoft.Isam.Esent.Interop;
-
 namespace ditjson.Extractors
 {
+    /// <summary>
+    /// Classifies security principals by their stable sAMAccountType value.
+    ///
+    /// Values in objectClass are schema-record references and are not portable
+    /// between NTDS databases. sAMAccountType, on the other hand, is an enum
+    /// whose values are defined by Active Directory.
+    /// </summary>
     internal static class ObjectClassifier
     {
-        private const int UserObjectClass = 0x7d;
-        private const int GroupObjectClass = 0x73;
-        private const int ComputerObjectClass = 0x6c;
-        private const int DeletedObjectClass = 0x87;
-        private const int InetOrgPersonClass = 0x75;
+        private const int GroupObject = 0x10000000;
+        private const int NonSecurityGroupObject = 0x10000001;
+        private const int AliasObject = 0x20000000;
+        private const int NonSecurityAliasObject = 0x20000001;
+        private const int UserObject = 0x30000000;
+        private const int MachineAccount = 0x30000001;
+        private const int TrustAccount = 0x30000002;
 
-        internal static string GetObjectClass(Session session, JET_TABLEID table,
-            ColumnInfo objectClassColumn)
-        {
-            try
-            {
-                var objectClassValue = GetColumnAsInt32(session, table, objectClassColumn);
+        internal static bool IsUserObject(int samAccountType) =>
+            samAccountType == UserObject || samAccountType == TrustAccount;
 
-                return objectClassValue switch
-                {
-                    UserObjectClass => "user",
-                    GroupObjectClass => "group",
-                    ComputerObjectClass => "computer",
-                    DeletedObjectClass => "deletedObject",
-                    InetOrgPersonClass => "inetOrgPerson",
-                    _ => "unknown"
-                };
-            }
-            catch
-            {
-                return "unknown";
-            }
-        }
+        internal static bool IsGroupObject(int samAccountType) =>
+            samAccountType == GroupObject ||
+            samAccountType == NonSecurityGroupObject ||
+            samAccountType == AliasObject ||
+            samAccountType == NonSecurityAliasObject;
 
-        internal static bool IsUserObject(int objectClassId) => objectClassId == UserObjectClass || objectClassId == InetOrgPersonClass;
-
-        internal static bool IsGroupObject(int objectClassId) => objectClassId == GroupObjectClass;
-
-        internal static bool IsComputerObject(int objectClassId) => objectClassId == ComputerObjectClass;
-
-        internal static bool IsDeletedObject(int objectClassId) => objectClassId == DeletedObjectClass;
-
-        private static int GetColumnAsInt32(Session session, JET_TABLEID table,
-            ColumnInfo column)
-        {
-            try
-            {
-                var value = Api.RetrieveColumnAsInt32(session, table, column.Columnid);
-                return value ?? 0;
-            }
-            catch
-            {
-                return 0;
-            }
-        }
+        internal static bool IsComputerObject(int samAccountType) => samAccountType == MachineAccount;
     }
 }

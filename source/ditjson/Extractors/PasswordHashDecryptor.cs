@@ -8,11 +8,6 @@ namespace ditjson.Extractors
 {
     internal static class PasswordHashDecryptor
     {
-        // Attribute IDs for password hash fields
-        private const int DESHASHED_ATTR = 0x90090 + 589824;      // dBCSPwd (LM hash)
-        private const int NTHASHED_ATTR = 0x90091 + 589824;       // unicodePwd (NT hash)
-        private const int DSRM_HASH_KEY_ATTR = 0x90096 + 589824;  // supplementalCredentials
-
         internal static void DecryptPasswordHashes(Session session, JET_DBID dbid, List<User> users, List<Computer> computers,
             string systemHivePath)
         {
@@ -45,7 +40,8 @@ namespace ditjson.Extractors
                 var recordId = 1;
                     while (Api.TryMoveNext(session, table))
                     {
-                        if (userDict.TryGetValue(recordId, out var user))
+                        var currentRecordId = ColumnExtractor.GetRecordId(session, table, columnDict, recordId);
+                        if (userDict.TryGetValue(currentRecordId, out var user))
                         {
                             DecryptHashesForUser(session, table, columnDict, user, bootkey);
                         }
@@ -77,7 +73,8 @@ namespace ditjson.Extractors
                 var recordId = 1;
                     while (Api.TryMoveNext(session, table))
                     {
-                        if (computerDict.TryGetValue(recordId, out var computer))
+                        var currentRecordId = ColumnExtractor.GetRecordId(session, table, columnDict, recordId);
+                        if (computerDict.TryGetValue(currentRecordId, out var computer))
                         {
                             DecryptHashesForComputer(session, table, columnDict, computer, bootkey);
                         }
@@ -98,7 +95,8 @@ namespace ditjson.Extractors
             try
             {
                 // Decrypt NT hash
-                var ntHashEncrypted = ColumnExtractor.GetBinary(session, table, columnDict, "ATTp589920");
+                var ntHashEncrypted = ColumnExtractor.GetBinary(
+                    session, table, columnDict, NtdsColumnNames.NtHash);
                 if (ntHashEncrypted != null && ntHashEncrypted.Length >= 24)
                 {
                     var ntHashDecrypted = DecryptHash(ntHashEncrypted, bootkey);
@@ -110,7 +108,8 @@ namespace ditjson.Extractors
                 }
 
                 // Decrypt LM hash
-                var lmHashEncrypted = ColumnExtractor.GetBinary(session, table, columnDict, "ATTp589919");
+                var lmHashEncrypted = ColumnExtractor.GetBinary(
+                    session, table, columnDict, NtdsColumnNames.LmHash);
                 if (lmHashEncrypted != null && lmHashEncrypted.Length >= 24)
                 {
                     var lmHashDecrypted = DecryptHash(lmHashEncrypted, bootkey);
@@ -133,7 +132,8 @@ namespace ditjson.Extractors
             try
             {
                 // Decrypt NT hash
-                var ntHashEncrypted = ColumnExtractor.GetBinary(session, table, columnDict, "ATTp589920");
+                var ntHashEncrypted = ColumnExtractor.GetBinary(
+                    session, table, columnDict, NtdsColumnNames.NtHash);
                 if (ntHashEncrypted != null && ntHashEncrypted.Length >= 24)
                 {
                     var ntHashDecrypted = DecryptHash(ntHashEncrypted, bootkey);
@@ -145,7 +145,8 @@ namespace ditjson.Extractors
                 }
 
                 // Decrypt LM hash
-                var lmHashEncrypted = ColumnExtractor.GetBinary(session, table, columnDict, "ATTp589919");
+                var lmHashEncrypted = ColumnExtractor.GetBinary(
+                    session, table, columnDict, NtdsColumnNames.LmHash);
                 if (lmHashEncrypted != null && lmHashEncrypted.Length >= 24)
                 {
                     var lmHashDecrypted = DecryptHash(lmHashEncrypted, bootkey);

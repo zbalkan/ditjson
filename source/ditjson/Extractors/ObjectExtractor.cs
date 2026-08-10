@@ -33,14 +33,20 @@ namespace ditjson.Extractors
                     {
                         try
                         {
-                            if (!columnDict.ContainsKey("ATTj590000"))
+                            // ATTj590126 is sAMAccountType. The old implementation used
+                            // ATTj590000, which is not an AD datatable column, so every
+                            // record was skipped before it could be classified.
+                            if (!columnDict.ContainsKey(NtdsColumnNames.SamAccountType))
                                 continue;
 
-                            var objectClassId = ColumnExtractor.GetInt32(session, table, columnDict, "ATTj590000");
+                            var samAccountType = ColumnExtractor.GetInt32(
+                                session, table, columnDict, NtdsColumnNames.SamAccountType);
+                            var currentRecordId = ColumnExtractor.GetRecordId(
+                                session, table, columnDict, recordId);
 
-                            if (ObjectClassifier.IsUserObject(objectClassId))
+                            if (ObjectClassifier.IsUserObject(samAccountType))
                             {
-                                var user = UserExtractor.ExtractUser(session, table, recordId, columnDict);
+                                var user = UserExtractor.ExtractUser(session, table, currentRecordId, columnDict);
                                 FieldCleaner.CleanUser(user);
                                 if (ObjectFilter.ShouldIncludeUser(user, filterOptions))
                                 {
@@ -48,9 +54,9 @@ namespace ditjson.Extractors
                                     users.Add(user);
                                 }
                             }
-                            else if (ObjectClassifier.IsGroupObject(objectClassId))
+                            else if (ObjectClassifier.IsGroupObject(samAccountType))
                             {
-                                var group = GroupExtractor.ExtractGroup(session, table, recordId, columnDict);
+                                var group = GroupExtractor.ExtractGroup(session, table, currentRecordId, columnDict);
                                 FieldCleaner.CleanGroup(group);
                                 if (ObjectFilter.ShouldIncludeGroup(group, filterOptions))
                                 {
@@ -58,9 +64,9 @@ namespace ditjson.Extractors
                                     groups.Add(group);
                                 }
                             }
-                            else if (ObjectClassifier.IsComputerObject(objectClassId))
+                            else if (ObjectClassifier.IsComputerObject(samAccountType))
                             {
-                                var computer = ComputerExtractor.ExtractComputer(session, table, recordId, columnDict);
+                                var computer = ComputerExtractor.ExtractComputer(session, table, currentRecordId, columnDict);
                                 FieldCleaner.CleanComputer(computer);
                                 if (ObjectFilter.ShouldIncludeComputer(computer, filterOptions))
                                 {

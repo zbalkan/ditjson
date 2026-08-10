@@ -8,9 +8,6 @@ namespace ditjson.Extractors
 {
     internal static class PasswordHistoryExtractor
     {
-        // Attribute ID for password history
-        private const int PWD_HISTORY_ATTR = 589986;  // ATTx589986
-
         internal static void ExtractPasswordHistory(Session session, JET_DBID dbid, List<User> users, byte[] bootkey)
         {
             if (users == null || users.Count == 0 || bootkey == null || bootkey.Length == 0)
@@ -30,7 +27,8 @@ namespace ditjson.Extractors
                 var recordId = 1;
                     while (Api.TryMoveNext(session, table))
                     {
-                        if (userDict.TryGetValue(recordId, out var user))
+                        var currentRecordId = ColumnExtractor.GetRecordId(session, table, columnDict, recordId);
+                        if (userDict.TryGetValue(currentRecordId, out var user))
                         {
                             ExtractHistoryForUser(session, table, columnDict, user, bootkey);
                         }
@@ -50,7 +48,8 @@ namespace ditjson.Extractors
         {
             try
             {
-                var pwdHistoryData = ColumnExtractor.GetBinary(session, table, columnDict, "ATTx589986");
+                var pwdHistoryData = ColumnExtractor.GetBinary(
+                    session, table, columnDict, NtdsColumnNames.NtHashHistory);
                 if (pwdHistoryData == null || pwdHistoryData.Length == 0)
                     return;
 
