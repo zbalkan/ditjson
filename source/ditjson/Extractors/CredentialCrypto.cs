@@ -65,27 +65,36 @@ namespace ditjson.Extractors
 
         internal static byte[] UnwrapAttribute(byte[] blob, IReadOnlyList<byte[]> peks)
         {
-            if (blob.Length < 40)
+            if (blob.Length < 24)
             {
                 throw new InvalidDataException("Truncated encrypted credential attribute");
             }
 
             var version = BitConverter.ToUInt32(blob, 0);
-            var index = blob[4];
+            var index = BitConverter.ToUInt32(blob, 4);
             if (index >= peks.Count)
             {
                 throw new InvalidDataException($"Unknown PEK index {index}");
             }
 
             var material = blob.AsSpan(8, 16).ToArray();
-            var cipher = blob.AsSpan(24).ToArray();
             if (version == 0x13)
             {
-                return AesDecrypt(peks[index], material, cipher);
+                // CRYPTED_HASHW16 places a four-byte field before the AES
+                // ciphertext. Hash, history, and supplemental blobs all use
+                // this layout for Windows Server 2016 encryption.
+                if (blob.Length < 44)
+                {
+                    throw new InvalidDataException("Truncated AES credential attribute");
+                }
+
+                var aesCipher = blob.AsSpan(28).ToArray();
+                return AesDecrypt(peks[(int)index], material, aesCipher);
             }
 
+            var cipher = blob.AsSpan(24).ToArray();
             using var md5 = IncrementalHash.CreateHash(HashAlgorithmName.MD5);
-            md5.AppendData(peks[index]);
+            md5.AppendData(peks[(int)index]);
             md5.AppendData(material);
             return new RC4(md5.GetHashAndReset()).Decrypt(cipher);
         }

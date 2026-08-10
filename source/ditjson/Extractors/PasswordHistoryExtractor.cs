@@ -90,23 +90,18 @@ namespace ditjson.Extractors
         internal static List<string> ParsePasswordHistory(byte[] data, IReadOnlyList<byte[]> peks, uint rid)
         {
             var hashes = new List<string>();
-            try
+            var plain = CredentialCrypto.RemoveRidDesLayer(CredentialCrypto.UnwrapAttribute(data, peks), rid);
+            // Chunk zero is the current password hash, not a history entry.
+            // Match secretsdump's history output by omitting it.
+            for (var offset = 16; offset + 16 <= plain.Length; offset += 16)
             {
-                var plain = CredentialCrypto.RemoveRidDesLayer(CredentialCrypto.UnwrapAttribute(data, peks), rid);
-                for (var offset = 0; offset + 16 <= plain.Length; offset += 16)
+                var hashData = plain.AsSpan(offset, 16).ToArray();
+                if (!IsZeroHash(hashData))
                 {
-                    var hashData = plain.AsSpan(offset, 16).ToArray();
-                    if (!IsZeroHash(hashData))
-                    {
-                        hashes.Add(BitConverter.ToString(hashData).Replace("-", "").ToUpperInvariant());
-                    }
+                    hashes.Add(Convert.ToHexString(hashData));
                 }
-                return hashes;
             }
-            catch
-            {
-                return hashes;
-            }
+            return hashes;
         }
     }
 }

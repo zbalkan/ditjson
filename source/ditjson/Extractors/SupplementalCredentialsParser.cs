@@ -9,6 +9,11 @@ namespace ditjson.Extractors
 {
     internal static class SupplementalCredentialsParser
     {
+        // USER_PROPERTIES has four reserved scalar fields followed by a
+        // 96-byte reserved buffer, a signature, and the property count.
+        private const int UserPropertiesHeaderLength = 112;
+        private const int PropertyCountOffset = 110;
+
         internal static void ParseSupplementalCredentials(Session session, JET_DBID dbid, List<User> users, List<Computer> computers, IReadOnlyList<byte[]> peks)
         {
             Console.Error.WriteLine("[*] Parsing supplemental credentials...");
@@ -167,13 +172,13 @@ namespace ditjson.Extractors
             var keys = new List<KerberosKey>();
             try
             {
-                if (data.Length < 16)
+                if (data.Length < UserPropertiesHeaderLength)
                 {
                     return (null, null);
                 }
 
-                var propertyCount = BitConverter.ToUInt16(data, 14);
-                var offset = 16;
+                var propertyCount = BitConverter.ToUInt16(data, PropertyCountOffset);
+                var offset = UserPropertiesHeaderLength;
                 for (var property = 0; property < propertyCount && offset + 6 <= data.Length; property++)
                 {
                     var nameLength = BitConverter.ToUInt16(data, offset);

@@ -7,6 +7,21 @@ namespace ditjson.Extractors
     {
         private static readonly int[] BootkeyTransform = { 8, 5, 4, 2, 11, 9, 13, 3, 0, 6, 1, 12, 14, 10, 15, 7 };
 
+        internal static byte[] ApplyBootkeyTransform(byte[] scrambled)
+        {
+            if (scrambled == null || scrambled.Length != 16)
+            {
+                throw new ArgumentException("A scrambled boot key must contain exactly 16 bytes", nameof(scrambled));
+            }
+
+            var bootkey = new byte[16];
+            for (var i = 0; i < bootkey.Length; i++)
+            {
+                bootkey[i] = scrambled[BootkeyTransform[i]];
+            }
+            return bootkey;
+        }
+
         internal static byte[]? ExtractBootkey(string systemHivePath)
         {
             if (!File.Exists(systemHivePath))
@@ -35,14 +50,7 @@ namespace ditjson.Extractors
                     throw new InvalidDataException("LSA class names do not contain a 16-byte boot key");
                 }
 
-                var scrambled = Convert.FromHexString(hex);
-                var bootkey = new byte[16];
-                for (var i = 0; i < bootkey.Length; i++)
-                {
-                    bootkey[i] = scrambled[BootkeyTransform[i]];
-                }
-
-                return bootkey;
+                return ApplyBootkeyTransform(Convert.FromHexString(hex));
             }
             catch (Exception ex)
             {
