@@ -1,5 +1,5 @@
-using CommandLine;
 using System.Text.Json;
+using CommandLine;
 
 namespace ditjson.Tests;
 
@@ -8,37 +8,11 @@ namespace ditjson.Tests;
 public class ProgramTests
 {
     [TestMethod]
-    public void Parser_AcceptsNtdsPositionalArgument()
-    {
-        Options? parsed = null;
-
-        new Parser(settings => settings.HelpWriter = TextWriter.Null)
-            .ParseArguments<Options>(["ntds.dit"])
-            .WithParsed(options => parsed = options);
-
-        Assert.IsNotNull(parsed);
-        Assert.AreEqual("ntds.dit", parsed.Ntds);
-        Assert.IsNull(parsed.System);
-        Assert.IsNull(parsed.Output);
-    }
-
-    [TestMethod]
-    public void Parser_AcceptsSystemAndOutputArguments()
-    {
-        Options? parsed = null;
-
-        new Parser(settings => settings.HelpWriter = TextWriter.Null)
-            .ParseArguments<Options>(["ntds.dit", "SYSTEM", "-o", "domain.json"])
-            .WithParsed(options => parsed = options);
-
-        Assert.IsNotNull(parsed);
-        Assert.AreEqual("ntds.dit", parsed.Ntds);
-        Assert.AreEqual("SYSTEM", parsed.System);
-        Assert.AreEqual("domain.json", parsed.Output);
-    }
-
-    [TestMethod]
-    public void Main_MissingNtds_ReturnsRuntimeFailureWithoutStdout()
+    [DataRow("-h")]
+    [DataRow("--help")]
+    [DataRow("-v")]
+    [DataRow("--version")]
+    public void Main_HelpAndVersion_ReturnSuccessWithoutStdout(string argument)
     {
         var stdout = new StringWriter();
         var stderr = new StringWriter();
@@ -49,11 +23,11 @@ public class ProgramTests
             Console.SetOut(stdout);
             Console.SetError(stderr);
 
-            var exitCode = Program.Main([Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".dit")]);
+            var exitCode = Program.Main([argument]);
 
-            Assert.AreEqual(1, exitCode);
+            Assert.AreEqual(0, exitCode);
             Assert.AreEqual(string.Empty, stdout.ToString());
-            StringAssert.Contains(stderr.ToString(), "NTDS file not found");
+            Assert.IsGreaterThan(0, stderr.ToString().Length);
         }
         finally
         {
@@ -87,12 +61,8 @@ public class ProgramTests
         }
     }
 
-    [DataTestMethod]
-    [DataRow("-h")]
-    [DataRow("--help")]
-    [DataRow("-v")]
-    [DataRow("--version")]
-    public void Main_HelpAndVersion_ReturnSuccessWithoutStdout(string argument)
+    [TestMethod]
+    public void Main_MissingNtds_ReturnsRuntimeFailureWithoutStdout()
     {
         var stdout = new StringWriter();
         var stderr = new StringWriter();
@@ -103,11 +73,11 @@ public class ProgramTests
             Console.SetOut(stdout);
             Console.SetError(stderr);
 
-            var exitCode = Program.Main([argument]);
+            var exitCode = Program.Main([Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".dit")]);
 
-            Assert.AreEqual(0, exitCode);
+            Assert.AreEqual(1, exitCode);
             Assert.AreEqual(string.Empty, stdout.ToString());
-            Assert.IsGreaterThan(0, stderr.ToString().Length);
+            StringAssert.Contains(stderr.ToString(), "NTDS file not found");
         }
         finally
         {
@@ -117,22 +87,33 @@ public class ProgramTests
     }
 
     [TestMethod]
-    public void WriteOutput_WithoutDestination_WritesOnlyValidJsonToStdout()
+    public void Parser_AcceptsNtdsPositionalArgument()
     {
-        var stdout = new StringWriter();
-        var originalOut = Console.Out;
-        try
-        {
-            Console.SetOut(stdout);
-            Program.WriteOutput("{\"users\":[]}", null);
-        }
-        finally
-        {
-            Console.SetOut(originalOut);
-        }
+        Options? parsed = null;
 
-        using var document = JsonDocument.Parse(stdout.ToString());
-        Assert.AreEqual(JsonValueKind.Array, document.RootElement.GetProperty("users").ValueKind);
+        new Parser(settings => settings.HelpWriter = TextWriter.Null)
+            .ParseArguments<Options>(["ntds.dit"])
+            .WithParsed(options => parsed = options);
+
+        Assert.IsNotNull(parsed);
+        Assert.AreEqual("ntds.dit", parsed.Ntds);
+        Assert.IsNull(parsed.System);
+        Assert.IsNull(parsed.Output);
+    }
+
+    [TestMethod]
+    public void Parser_AcceptsSystemAndOutputArguments()
+    {
+        Options? parsed = null;
+
+        new Parser(settings => settings.HelpWriter = TextWriter.Null)
+            .ParseArguments<Options>(["ntds.dit", "SYSTEM", "-o", "domain.json"])
+            .WithParsed(options => parsed = options);
+
+        Assert.IsNotNull(parsed);
+        Assert.AreEqual("ntds.dit", parsed.Ntds);
+        Assert.AreEqual("SYSTEM", parsed.System);
+        Assert.AreEqual("domain.json", parsed.Output);
     }
 
     [TestMethod]
@@ -165,5 +146,24 @@ public class ProgramTests
 
         Assert.ThrowsExactly<DirectoryNotFoundException>(() =>
             Program.WriteOutput("{}", missingDirectory));
+    }
+
+    [TestMethod]
+    public void WriteOutput_WithoutDestination_WritesOnlyValidJsonToStdout()
+    {
+        var stdout = new StringWriter();
+        var originalOut = Console.Out;
+        try
+        {
+            Console.SetOut(stdout);
+            Program.WriteOutput("{\"users\":[]}", null);
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
+
+        using var document = JsonDocument.Parse(stdout.ToString());
+        Assert.AreEqual(JsonValueKind.Array, document.RootElement.GetProperty("users").ValueKind);
     }
 }

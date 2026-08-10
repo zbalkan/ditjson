@@ -6,24 +6,6 @@ namespace ditjson.Tests.Extractors;
 public class RC4Tests
 {
     [TestMethod]
-    public void RC4_WithKnownKeyAndCiphertext_ProducesCorrectPlaintext()
-    {
-        // Arrange: Known RC4 test vector
-        var key = new byte[] { 0x4B, 0x65, 0x79 };  // "Key"
-        var ciphertext = new byte[] { 0xEB, 0x9F, 0x77, 0x97, 0xB7, 0x77, 0xBB, 0xC1 };
-        var expectedPlaintext = new byte[] { 0x50, 0x6C, 0x61, 0x69, 0x6E, 0x74, 0x65, 0x78 };  // "Plaintext"
-
-        // Act
-        var rc4 = new RC4(key);
-        var result = rc4.Decrypt(ciphertext);
-
-        // Assert
-        // Note: Exact comparison depends on matching test vector
-        Assert.IsNotNull(result);
-        Assert.HasCount(ciphertext.Length, result);
-    }
-
-    [TestMethod]
     public void RC4_EncryptionDecryption_IsReversible()
     {
         // Arrange
@@ -42,16 +24,17 @@ public class RC4Tests
     }
 
     [TestMethod]
-    public void RC4_WithEmptyKey_Handles()
+    public void RC4_Initialization_WithKey_BuildsSBox()
     {
-        // Arrange
-        var key = Array.Empty<byte>();
-        var data = new byte[] { 0x01, 0x02, 0x03 };
-
-        // Act & Assert (should not throw)
+        // Arrange & Act
+        var key = new byte[] { 0x01, 0x02, 0x03 };
         var rc4 = new RC4(key);
-        var result = rc4.Decrypt(data);
-        Assert.IsNotNull(result);
+
+        // Act: Decrypt empty data to verify initialization
+        var result = rc4.Decrypt([]);
+
+        // Assert
+        Assert.IsEmpty(result);
     }
 
     [TestMethod]
@@ -71,6 +54,37 @@ public class RC4Tests
 
         // Assert
         CollectionAssert.AreNotEqual(result1, result2);
+    }
+
+    [TestMethod]
+    public void RC4_WithEmptyKey_Handles()
+    {
+        // Arrange
+        var key = Array.Empty<byte>();
+        var data = new byte[] { 0x01, 0x02, 0x03 };
+
+        // Act & Assert (should not throw)
+        var rc4 = new RC4(key);
+        var result = rc4.Decrypt(data);
+        Assert.IsNotNull(result);
+    }
+
+    [TestMethod]
+    public void RC4_WithKnownKeyAndCiphertext_ProducesCorrectPlaintext()
+    {
+        // Arrange: Known RC4 test vector
+        var key = new byte[] { 0x4B, 0x65, 0x79 };  // "Key"
+        var ciphertext = new byte[] { 0xEB, 0x9F, 0x77, 0x97, 0xB7, 0x77, 0xBB, 0xC1 };
+        var expectedPlaintext = new byte[] { 0x50, 0x6C, 0x61, 0x69, 0x6E, 0x74, 0x65, 0x78 };  // "Plaintext"
+
+        // Act
+        var rc4 = new RC4(key);
+        var result = rc4.Decrypt(ciphertext);
+
+        // Assert
+        // Note: Exact comparison depends on matching test vector
+        Assert.IsNotNull(result);
+        Assert.HasCount(ciphertext.Length, result);
     }
 
     [TestMethod]
@@ -104,19 +118,5 @@ public class RC4Tests
 
         // Assert
         Assert.HasCount(1, result);
-    }
-
-    [TestMethod]
-    public void RC4_Initialization_WithKey_BuildsSBox()
-    {
-        // Arrange & Act
-        var key = new byte[] { 0x01, 0x02, 0x03 };
-        var rc4 = new RC4(key);
-
-        // Act: Decrypt empty data to verify initialization
-        var result = rc4.Decrypt([]);
-
-        // Assert
-        Assert.IsEmpty(result);
     }
 }
