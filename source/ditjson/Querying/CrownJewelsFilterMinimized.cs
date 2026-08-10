@@ -143,13 +143,13 @@ namespace ditjson.Querying
                 res.Append(']');
 
                 foreach (var q in qs.Where(x => x.C > 0))
-                    Console.WriteLine($"[*] {q.N}: {q.C} results");
+                    Console.Error.WriteLine($"[*] {q.N}: {q.C} results");
 
                 return Out(meta, res.ToString(), tot);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[!] Error: {ex.Message}");
+                Console.Error.WriteLine($"[!] Error: {ex.Message}");
                 throw;
             }
         }

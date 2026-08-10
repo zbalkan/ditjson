@@ -14,11 +14,11 @@ namespace ditjson.Extractors
             var bootkey = RegistryDecryptor.ExtractBootkey(systemHivePath);
             if (bootkey == null || bootkey.Length == 0)
             {
-                Console.WriteLine("[!] Failed to extract bootkey from SYSTEM hive");
+                Console.Error.WriteLine("[!] Failed to extract bootkey from SYSTEM hive");
                 return;
             }
 
-            Console.WriteLine("[*] Decrypting password hashes...");
+            Console.Error.WriteLine("[*] Decrypting password hashes...");
             DecryptUserHashes(session, dbid, users, bootkey);
             DecryptComputerHashes(session, dbid, computers, bootkey);
         }
@@ -52,7 +52,7 @@ namespace ditjson.Extractors
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[!] Error decrypting user hashes: {ex.Message}");
+                Console.Error.WriteLine($"[!] Error decrypting user hashes: {ex.Message}");
             }
         }
 
@@ -85,7 +85,7 @@ namespace ditjson.Extractors
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[!] Error decrypting computer hashes: {ex.Message}");
+                Console.Error.WriteLine($"[!] Error decrypting computer hashes: {ex.Message}");
             }
         }
 
@@ -122,7 +122,7 @@ namespace ditjson.Extractors
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[!] Error decrypting hashes for user {user.SamAccountName}: {ex.Message}");
+                Console.Error.WriteLine($"[!] Error decrypting hashes for user {user.SamAccountName}: {ex.Message}");
             }
         }
 
@@ -159,7 +159,7 @@ namespace ditjson.Extractors
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[!] Error decrypting hashes for computer {computer.SamAccountName}: {ex.Message}");
+                Console.Error.WriteLine($"[!] Error decrypting hashes for computer {computer.SamAccountName}: {ex.Message}");
             }
         }
 

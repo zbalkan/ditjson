@@ -106,14 +106,14 @@ namespace ditjson.Querying
                 foreach (var query in allQueries)
                 {
                     if (query.Count > 0)
-                        Console.WriteLine($"[*] {query.Name}: {query.Count} results");
+                        Console.Error.WriteLine($"[*] {query.Name}: {query.Count} results");
                 }
 
                 return BuildFinalOutput(metadata, results.ToString(), totalResults);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[!] Error applying crown jewels: {ex.Message}");
+                Console.Error.WriteLine($"[!] Error applying crown jewels: {ex.Message}");
                 throw;
             }
         }

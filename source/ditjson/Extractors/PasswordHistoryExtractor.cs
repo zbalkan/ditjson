@@ -13,7 +13,7 @@ namespace ditjson.Extractors
             if (users == null || users.Count == 0 || bootkey == null || bootkey.Length == 0)
                 return;
 
-            Console.WriteLine("[*] Extracting password history...");
+            Console.Error.WriteLine("[*] Extracting password history...");
 
             try
             {
@@ -39,7 +39,7 @@ namespace ditjson.Extractors
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[!] Error extracting password history: {ex.Message}");
+                Console.Error.WriteLine($"[!] Error extracting password history: {ex.Message}");
             }
         }
 
@@ -61,7 +61,7 @@ namespace ditjson.Extractors
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[!] Error extracting password history for user {user.SamAccountName}: {ex.Message}");
+                Console.Error.WriteLine($"[!] Error extracting password history for user {user.SamAccountName}: {ex.Message}");
             }
         }
 

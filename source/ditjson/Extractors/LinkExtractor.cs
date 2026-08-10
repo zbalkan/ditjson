@@ -55,7 +55,7 @@ namespace ditjson.Extractors
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"[!] Error processing link record: {ex.Message}");
+                            Console.Error.WriteLine($"[!] Error processing link record: {ex.Message}");
                         }
                     }
 
@@ -63,7 +63,7 @@ namespace ditjson.Extractors
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[!] Failed to extract group memberships: {ex.Message}");
+                Console.Error.WriteLine($"[!] Failed to extract group memberships: {ex.Message}");
             }
         }
 

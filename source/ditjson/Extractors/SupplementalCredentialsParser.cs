@@ -10,7 +10,7 @@ namespace ditjson.Extractors
     {
         internal static void ParseSupplementalCredentials(Session session, JET_DBID dbid, List<User> users, List<Computer> computers)
         {
-            Console.WriteLine("[*] Parsing supplemental credentials...");
+            Console.Error.WriteLine("[*] Parsing supplemental credentials...");
             ParseUserCredentials(session, dbid, users);
             ParseComputerCredentials(session, dbid, computers);
         }
@@ -44,7 +44,7 @@ namespace ditjson.Extractors
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[!] Error parsing user credentials: {ex.Message}");
+                Console.Error.WriteLine($"[!] Error parsing user credentials: {ex.Message}");
             }
         }
 
@@ -77,7 +77,7 @@ namespace ditjson.Extractors
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[!] Error parsing computer credentials: {ex.Message}");
+                Console.Error.WriteLine($"[!] Error parsing computer credentials: {ex.Message}");
             }
         }
 
@@ -106,7 +106,7 @@ namespace ditjson.Extractors
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[!] Error parsing supplemental credentials for user {user.SamAccountName}: {ex.Message}");
+                Console.Error.WriteLine($"[!] Error parsing supplemental credentials for user {user.SamAccountName}: {ex.Message}");
             }
         }
 
@@ -135,7 +135,7 @@ namespace ditjson.Extractors
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[!] Error parsing supplemental credentials for computer {computer.SamAccountName}: {ex.Message}");
+                Console.Error.WriteLine($"[!] Error parsing supplemental credentials for computer {computer.SamAccountName}: {ex.Message}");
             }
         }
 

@@ -77,7 +77,7 @@ namespace ditjson.Extractors
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"[!] Error processing record {recordId}: {ex.Message}");
+                            Console.Error.WriteLine($"[!] Error processing record {recordId}: {ex.Message}");
                         }
 
                         recordId++;
@@ -92,7 +92,7 @@ namespace ditjson.Extractors
 
             if (selectedTables.Contains("link_table"))
             {
-                Console.WriteLine("[*] Extracting group memberships from link_table...");
+                Console.Error.WriteLine("[*] Extracting group memberships from link_table...");
                 LinkExtractor.ExtractGroupMemberships(session, dbid, users, groups, computers);
             }
 

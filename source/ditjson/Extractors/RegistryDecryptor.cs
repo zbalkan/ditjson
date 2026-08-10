@@ -31,7 +31,7 @@ namespace ditjson.Extractors
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[!] Failed to extract bootkey from SYSTEM hive: {ex.Message}");
+                Console.Error.WriteLine($"[!] Failed to extract bootkey from SYSTEM hive: {ex.Message}");
                 return null;
             }
         }

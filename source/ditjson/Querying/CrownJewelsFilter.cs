@@ -57,7 +57,7 @@ namespace ditjson.Querying
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[!] Error applying crown jewels: {ex.Message}");
+                Console.Error.WriteLine($"[!] Error applying crown jewels: {ex.Message}");
                 throw;
             }
         }
@@ -65,7 +65,7 @@ namespace ditjson.Querying
         [RequiresUnreferencedCode("Calls ditjson.Querying.CrownJewelsFilter.ProjectElement(JsonElement, String[])")]
         private static List<JsonElement> QueryByGroup(JsonElement users, string groupName, Func<JsonElement, bool> additionalFilter, string[] fields, string logMessage)
         {
-            Console.WriteLine(logMessage);
+            Console.Error.WriteLine(logMessage);
             var results = new List<JsonElement>();
 
             foreach (var user in users.EnumerateArray())
@@ -77,7 +77,7 @@ namespace ditjson.Querying
             }
 
             if (results.Count > 0)
-                Console.WriteLine($"[+] Found {results.Count} results");
+                Console.Error.WriteLine($"[+] Found {results.Count} results");
 
             return results;
         }
@@ -85,7 +85,7 @@ namespace ditjson.Querying
         [RequiresUnreferencedCode("Calls ditjson.Querying.CrownJewelsFilter.ProjectElement(JsonElement, String[])")]
         private static List<JsonElement> QueryByFlag(JsonElement users, string flag, Func<JsonElement, bool> additionalFilter, string[] fields, string logMessage)
         {
-            Console.WriteLine(logMessage);
+            Console.Error.WriteLine(logMessage);
             var results = new List<JsonElement>();
 
             foreach (var user in users.EnumerateArray())
@@ -97,7 +97,7 @@ namespace ditjson.Querying
             }
 
             if (results.Count > 0)
-                Console.WriteLine($"[+] Found {results.Count} results");
+                Console.Error.WriteLine($"[+] Found {results.Count} results");
 
             return results;
         }
@@ -105,7 +105,7 @@ namespace ditjson.Querying
         [RequiresUnreferencedCode("Calls ditjson.Querying.CrownJewelsFilter.ProjectElement(JsonElement, String[])")]
         private static List<JsonElement> QueryByCleartext(JsonElement users, string logMessage)
         {
-            Console.WriteLine(logMessage);
+            Console.Error.WriteLine(logMessage);
             var results = new List<JsonElement>();
 
             foreach (var user in users.EnumerateArray())
@@ -120,7 +120,7 @@ namespace ditjson.Querying
             }
 
             if (results.Count > 0)
-                Console.WriteLine($"[+] Found {results.Count} results");
+                Console.Error.WriteLine($"[+] Found {results.Count} results");
 
             return results;
         }
@@ -128,7 +128,7 @@ namespace ditjson.Querying
         [RequiresUnreferencedCode("Calls ditjson.Querying.CrownJewelsFilter.ProjectElement(JsonElement, String[])")]
         private static List<JsonElement> QueryByKerberos(JsonElement users, string logMessage)
         {
-            Console.WriteLine(logMessage);
+            Console.Error.WriteLine(logMessage);
             var results = new List<JsonElement>();
 
             foreach (var user in users.EnumerateArray())
@@ -143,7 +143,7 @@ namespace ditjson.Querying
             }
 
             if (results.Count > 0)
-                Console.WriteLine($"[+] Found {results.Count} results");
+                Console.Error.WriteLine($"[+] Found {results.Count} results");
 
             return results;
         }
@@ -151,7 +151,7 @@ namespace ditjson.Querying
         [RequiresUnreferencedCode("Calls ditjson.Querying.CrownJewelsFilter.ProjectElement(JsonElement, String[])")]
         private static List<JsonElement> QueryServiceAccounts(JsonElement users, string logMessage)
         {
-            Console.WriteLine(logMessage);
+            Console.Error.WriteLine(logMessage);
             var results = new List<JsonElement>();
             var patterns = new[] { "svc", "service", "mssql" };
 
@@ -170,7 +170,7 @@ namespace ditjson.Querying
             }
 
             if (results.Count > 0)
-                Console.WriteLine($"[+] Found {results.Count} results");
+                Console.Error.WriteLine($"[+] Found {results.Count} results");
 
             return results;
         }
@@ -178,7 +178,7 @@ namespace ditjson.Querying
         [RequiresUnreferencedCode("Calls ditjson.Querying.CrownJewelsFilter.ProjectElement(JsonElement, String[])")]
         private static List<JsonElement> QueryRecentlyActive(JsonElement users, string logMessage)
         {
-            Console.WriteLine(logMessage);
+            Console.Error.WriteLine(logMessage);
             var thirtyDaysAgo = DateTime.UtcNow.AddDays(-30).ToString("O");
             var results = new List<JsonElement>();
 
@@ -194,7 +194,7 @@ namespace ditjson.Querying
             }
 
             if (results.Count > 0)
-                Console.WriteLine($"[+] Found {results.Count} results");
+                Console.Error.WriteLine($"[+] Found {results.Count} results");
 
             return results;
         }
@@ -202,7 +202,7 @@ namespace ditjson.Querying
         [RequiresUnreferencedCode("Calls ditjson.Querying.CrownJewelsFilter.ProjectElement(JsonElement, String[])")]
         private static List<JsonElement> QueryStaleComputers(JsonElement computers, string logMessage)
         {
-            Console.WriteLine(logMessage);
+            Console.Error.WriteLine(logMessage);
             var ninetyDaysAgo = DateTime.UtcNow.AddDays(-90).ToString("O");
             var results = new List<JsonElement>();
 
@@ -217,7 +217,7 @@ namespace ditjson.Querying
             }
 
             if (results.Count > 0)
-                Console.WriteLine($"[+] Found {results.Count} results");
+                Console.Error.WriteLine($"[+] Found {results.Count} results");
 
             return results;
         }

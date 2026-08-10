@@ -9,7 +9,6 @@ using Microsoft.Isam.Esent.Interop;
 using ditjson.Extractors;
 using ditjson.Filtering;
 using ditjson.Output;
-using ditjson.Querying;
 
 [assembly: InternalsVisibleTo("ditjson.Tests")]
 
@@ -17,45 +16,62 @@ namespace ditjson
 {
     internal static class Program
     {
-        /// <summary>
-        ///     Application entry point
-        /// </summary>
-        /// <param name="args">
-        /// </param>
+        private static readonly string[] StructuredTables = ["datatable", "link_table", "sd_table"];
+
         [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(Options))]
         [RequiresUnreferencedCode("Calls ditjson.Program.RunOptions(Options)")]
-        public static void Main(string[] args) => _ = Parser.Default.ParseArguments<Options>(args)
-                .WithParsed(RunOptions)
-                .WithNotParsed(HandleParseError);
+        public static int Main(string[] args)
+        {
+            args = args.Select(arg => arg switch
+            {
+                "-h" => "--help",
+                "-v" => "--version",
+                _ => arg
+            }).ToArray();
 
-        /// <summary>
-        ///     Runs the incorrect parameter actions
-        /// </summary>
-        /// <param name="errs">
-        /// </param>
-        internal static void HandleParseError(IEnumerable<Error> errs) => Console.WriteLine("Check the parameters and retry.");
+            var parser = new Parser(settings =>
+            {
+                // stdout is reserved for the JSON document.
+                settings.HelpWriter = Console.Error;
+                settings.AutoVersion = true;
+            });
 
-        /// <summary>
-        ///     Runs the happy path code here.
-        /// </summary>
-        /// <param name="opts">
-        ///     Parameters as Options
-        /// </param>
-        /// <exception cref="NtdsException">
-        /// </exception>
-        /// <exception cref="FormatException">
-        /// </exception>
-        /// <exception cref="OverflowException">
-        /// </exception>
-        [RequiresUnreferencedCode("Calls ditjson.Program.ExportJson(Session, JET_DBID)")]
-        internal static void RunOptions(Options opts)
+            return parser.ParseArguments<Options>(args)
+                .MapResult(RunOptions, errors =>
+                    errors.Any(error => error is HelpRequestedError or VersionRequestedError) ? 0 : 2);
+        }
+
+        [RequiresUnreferencedCode("Calls ditjson.Output.JsonOutputFormatter.FormatStructuredOutput")]
+        internal static int RunOptions(Options opts)
         {
             if (!File.Exists(opts.Ntds))
             {
-                Console.WriteLine($"ntds.dit file does not exist in the path {opts.Ntds}");
-                return;
+                Console.Error.WriteLine($"ditjson: NTDS file not found: {opts.Ntds}");
+                return 1;
             }
 
+            if (!string.IsNullOrEmpty(opts.System) && !File.Exists(opts.System))
+            {
+                Console.Error.WriteLine($"ditjson: SYSTEM hive not found: {opts.System}");
+                return 1;
+            }
+
+            try
+            {
+                var json = Extract(opts);
+                WriteOutput(json, opts.Output);
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"ditjson: extraction failed: {ex.Message}");
+                return 1;
+            }
+        }
+
+        [RequiresUnreferencedCode("Calls ditjson.Output.JsonOutputFormatter.FormatStructuredOutput")]
+        private static string Extract(Options opts)
+        {
             Api.JetSetSystemParameter(JET_INSTANCE.Nil, JET_SESID.Nil, JET_param.DatabasePageSize, 8192, null);
 
             using var instance = new Instance("ditjson");
@@ -66,128 +82,60 @@ namespace ditjson
             Api.JetAttachDatabase(session, opts.Ntds, AttachDatabaseGrbit.ReadOnly);
             Api.JetOpenDatabase(session, opts.Ntds, null, out var dbid, OpenDatabaseGrbit.ReadOnly);
 
-            if (opts.Schema)
+            Console.Error.WriteLine("[*] Extracting structured objects (users, groups, computers)...");
+            var selectedTables = FilterTables(session, dbid);
+            var filterOptions = new ObjectFilter.FilterOptions
             {
-                var allTables = FilterTables(["*"], session, dbid);
-                NtdsSchema.ExportSchema(session, dbid, allTables);
-            }
-            else if (opts.Structured)
+                IncludeDeleted = true,
+                IncludeEmptyCollections = true
+            };
+
+            var (users, groups, computers) = ObjectExtractor.ExtractStructuredObjects(
+                session, dbid, selectedTables, filterOptions);
+            Console.Error.WriteLine($"[+] Extracted {users.Count} users, {groups.Count} groups, {computers.Count} computers");
+
+            if (!string.IsNullOrEmpty(opts.System))
             {
-                Console.WriteLine("[*] Extracting structured objects (users, groups, computers)...");
-                var selectedTables = FilterTables(opts.Tables, session, dbid);
-
-                var filterOptions = new ObjectFilter.FilterOptions
+                Console.Error.WriteLine("[*] Extracting boot-key-dependent credentials...");
+                var bootkey = RegistryDecryptor.ExtractBootkey(opts.System);
+                if (bootkey == null || bootkey.Length == 0)
                 {
-                    IncludeDeleted = opts.IncludeDeleted,
-                    ExcludeDisabled = opts.ExcludeDisabled,
-                    ExcludeLockedOut = opts.ExcludeLockedOut,
-                    ExcludeComputers = opts.ExcludeComputers,
-                    ExcludeGroups = opts.ExcludeGroups,
-                    IncludeEmptyCollections = opts.IncludeEmptyCollections
-                };
-
-                var (users, groups, computers) = ObjectExtractor.ExtractStructuredObjects(session, dbid, selectedTables, filterOptions);
-
-                Console.WriteLine($"[+] Extracted {users.Count} users, {groups.Count} groups, {computers.Count} computers");
-
-                // Extract supplemental credentials if requested
-                if (opts.ExtractSupplemental)
-                {
-                    SupplementalCredentialsParser.ParseSupplementalCredentials(session, dbid, users, computers);
-                }
-
-                // Extract password hashes and history if SYSTEM hive is provided
-                if ((opts.ExtractHashes || opts.ExtractHistory) && !string.IsNullOrEmpty(opts.SystemHive))
-                {
-                    var bootkey = RegistryDecryptor.ExtractBootkey(opts.SystemHive);
-                    if (bootkey != null && bootkey.Length > 0)
-                    {
-                        if (opts.ExtractHashes)
-                        {
-                            Console.WriteLine("[*] Extracting password hashes...");
-                            PasswordHashDecryptor.DecryptPasswordHashes(session, dbid, users, computers, opts.SystemHive);
-                        }
-
-                        if (opts.ExtractHistory)
-                        {
-                            PasswordHistoryExtractor.ExtractPasswordHistory(session, dbid, users, bootkey);
-                        }
-                    }
-                    else if (opts.ExtractHashes || opts.ExtractHistory)
-                    {
-                        Console.WriteLine("[!] Failed to extract bootkey from SYSTEM hive");
-                    }
-                }
-
-                var json = JsonOutputFormatter.FormatStructuredOutput(users, groups, computers);
-
-                // Filtering is opt-in so a successful extraction can never silently
-                // produce an empty export merely because no crown-jewel query matched.
-                if (ShouldApplyCrownJewels(opts))
-                {
-                    try
-                    {
-                        Console.WriteLine("[*] Applying crown jewels queries (optimized single-pass)...");
-                        json = CrownJewelsFilterOptimized.ApplyCrownJewels(json);
-                        Console.WriteLine("[+] Filtering complete");
-                    }
-                    catch (Exception ex)
-                    {
-                        throw new NtdsException("Crown jewels filtering failed. Use --all-data to skip filtering.", ex);
-                    }
-                }
-                else if (!string.IsNullOrEmpty(opts.JqQuery))
-                {
-                    Console.WriteLine($"[!] Custom JQ queries not yet implemented. Use standard jq: ditjson ... | jq '{opts.JqQuery}'");
+                    Console.Error.WriteLine("[!] Failed to extract boot key from SYSTEM hive");
                 }
                 else
                 {
-                    Console.WriteLine("[*] Exporting all structured data without crown jewels filtering");
-                }
-
-                try
-                {
-                    File.WriteAllText("ntds.json", json);
-                    Console.WriteLine("[+] Structured JSON export complete: ntds.json");
-                }
-                catch (Exception ex)
-                {
-                    throw new NtdsException("Failed to write to JSON to file.", ex);
+                    PasswordHashDecryptor.DecryptPasswordHashes(session, dbid, users, computers, opts.System);
+                    PasswordHistoryExtractor.ExtractPasswordHistory(session, dbid, users, bootkey);
+                    SupplementalCredentialsParser.ParseSupplementalCredentials(session, dbid, users, computers);
                 }
             }
-            else
-            {
-                var selectedTables = FilterTables(opts.Tables, session, dbid);
-                var json = NtdsData.TablesToJson(session, dbid, selectedTables);
 
-                try
-                {
-                    File.WriteAllText("ntds.json", json);
-                }
-                catch (Exception ex)
-                {
-                    throw new NtdsException("Failed to write to JSON to file.", ex);
-                }
-            }
+            return JsonOutputFormatter.FormatStructuredOutput(users, groups, computers);
         }
 
-        internal static bool ShouldApplyCrownJewels(Options opts) =>
-            opts.CrownJewels && !opts.AllData && string.IsNullOrEmpty(opts.JqQuery);
-
-        private static List<string> FilterTables(IEnumerable<string> tablesInOptions, Session session, JET_DBID dbid)
+        internal static void WriteOutput(string json, string? output)
         {
-            var tablesInDb = Api.GetTableNames(session, dbid);
+            if (string.IsNullOrEmpty(output))
+            {
+                Console.Out.Write(json);
+                return;
+            }
 
-            // If user asks all
-            if (tablesInOptions.Count() == 1 && tablesInOptions.First().Equals("*", StringComparison.Ordinal))
+            File.WriteAllText(output, json);
+            Console.Error.WriteLine($"[+] JSON export complete: {output}");
+        }
+
+        private static List<string> FilterTables(Session session, JET_DBID dbid)
+        {
+            var tablesInDb = new HashSet<string>(Api.GetTableNames(session, dbid), StringComparer.Ordinal);
+            var selected = new List<string>();
+            foreach (var table in StructuredTables)
             {
-                return new List<string>(tablesInDb);
+                if (tablesInDb.Contains(table))
+                    selected.Add(table);
             }
-            else
-            {
-                // if user asks oly specific tables
-                return new List<string>(tablesInOptions.Where(t => tablesInDb.Contains(t)));
-            }
+
+            return selected;
         }
     }
 }
