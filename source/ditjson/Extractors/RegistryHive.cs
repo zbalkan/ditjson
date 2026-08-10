@@ -23,10 +23,17 @@ namespace ditjson.Extractors
         internal RegistryHive(string path)
         {
             stream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-            if (ReadUInt32(0) != Regf)
+            try
+            {
+                if (ReadUInt32(0) != Regf)
+                {
+                    throw new InvalidDataException("Not a registry hive");
+                }
+            }
+            catch
             {
                 stream.Dispose();
-                throw new InvalidDataException("Not a registry hive");
+                throw;
             }
         }
 
@@ -62,38 +69,47 @@ namespace ditjson.Extractors
 
         internal byte[]? ReadValue(int keyCell, string name)
         {
+            return TryFindValueData(keyCell, name, out var offset, out var length)
+                ? ReadBytes(offset, length)
+                : null;
+        }
+
+        private bool TryFindValueData(int keyCell, string name, out long dataOffset, out int length)
+        {
             RequireSignature(keyCell, Nk, "nk");
             var count = ReadInt32(Payload(keyCell) + 0x24);
             var list = ReadInt32(Payload(keyCell) + 0x28);
-            if (count <= 0 || list < 0)
-            {
-                return null;
-            }
-
-            for (var i = 0; i < count; i++)
+            for (var i = 0; count > 0 && list >= 0 && i < count; i++)
             {
                 var valueCell = ReadInt32(Payload(list) + i * 4);
                 RequireSignature(valueCell, Vk, "vk");
                 var at = Payload(valueCell);
                 var nameLength = ReadUInt16(at + 2);
                 var ascii = (ReadUInt16(at + 0x10) & 1) != 0;
-                var valueName = nameLength == 0
-                    ? string.Empty
-                    : (ascii ? Encoding.ASCII : Encoding.Unicode).GetString(ReadBytes(at + 0x14, nameLength));
-                if (!string.Equals(valueName, name, StringComparison.OrdinalIgnoreCase))
+                if (!NameEquals(at + 0x14, nameLength, ascii, name))
                 {
                     continue;
                 }
 
                 var rawLength = ReadUInt32(at + 4);
-                var length = (int)(rawLength & 0x7fffffff);
-                var dataOffset = at + 8;
-                return (rawLength & 0x80000000) != 0
-                    ? ReadBytes(dataOffset, Math.Min(length, 4))
-                    : ReadBytes(Payload(ReadInt32(dataOffset)), length);
+                length = (int)(rawLength & 0x7fffffff);
+                var offsetField = at + 8;
+                if ((rawLength & 0x80000000) != 0)
+                {
+                    dataOffset = offsetField;
+                    length = Math.Min(length, 4);
+                }
+                else
+                {
+                    dataOffset = Payload(ReadInt32(offsetField));
+                }
+
+                return true;
             }
 
-            return null;
+            dataOffset = default;
+            length = default;
+            return false;
         }
 
         private int FindSubkey(int keyCell, string name)
@@ -131,7 +147,18 @@ namespace ditjson.Extractors
 
             for (var i = 0; i < count; i++)
             {
-                var child = ReadInt32(at + 4 + i * stride);
+                var entry = at + 4 + i * stride;
+                if (signature == Lh && ReadUInt32(entry + 4) != ComputeLhHash(name))
+                {
+                    continue;
+                }
+
+                if (signature == Lf && !LfHintMatches(ReadUInt32(entry + 4), name))
+                {
+                    continue;
+                }
+
+                var child = ReadInt32(entry);
                 if (KeyNameEquals(child, name))
                 {
                     return child;
@@ -147,13 +174,48 @@ namespace ditjson.Extractors
             var at = Payload(cell);
             var length = ReadUInt16(at + 0x48);
             var ascii = (ReadUInt16(at + 2) & 0x20) != 0;
-            if ((ascii && length != requestedName.Length) || (!ascii && length != requestedName.Length * 2))
+            return NameEquals(at + 0x4c, length, ascii, requestedName);
+        }
+
+        private static uint ComputeLhHash(string name)
+        {
+            uint hash = 0;
+            foreach (var character in name)
+            {
+                hash = hash * 37 + char.ToUpperInvariant(character);
+            }
+
+            return hash;
+        }
+
+        private static bool LfHintMatches(uint hint, string name)
+        {
+            for (var i = 0; i < 4; i++)
+            {
+                var character = i < name.Length ? char.ToUpperInvariant(name[i]) : '\0';
+                if (character > byte.MaxValue)
+                {
+                    return true;
+                }
+
+                if (char.ToUpperInvariant((char)(byte)(hint >> (i * 8))) != character)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private bool NameEquals(long offset, int byteLength, bool ascii, string requestedName)
+        {
+            if ((ascii && byteLength != requestedName.Length) || (!ascii && byteLength != requestedName.Length * 2))
             {
                 return false;
             }
 
-            Span<byte> buffer = length <= 256 ? stackalloc byte[length] : new byte[length];
-            ReadExactly(at + 0x4c, buffer);
+            Span<byte> buffer = byteLength <= 256 ? stackalloc byte[byteLength] : new byte[byteLength];
+            ReadExactly(offset, buffer);
             for (var i = 0; i < requestedName.Length; i++)
             {
                 var hiveCharacter = ascii ? (char)buffer[i] : (char)BinaryPrimitives.ReadUInt16LittleEndian(buffer.Slice(i * 2, 2));

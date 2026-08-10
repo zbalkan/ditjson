@@ -24,6 +24,23 @@ public sealed class RegistryHiveTests
     }
 
     [TestMethod]
+    public void OpenKey_UsesLhHashes()
+    {
+        var path = CreateHive();
+        try
+        {
+            using var hive = new RegistryHive(path);
+
+            Assert.AreEqual(0x200, hive.OpenKey("Software"));
+            Assert.AreEqual(0x200, hive.OpenKey("software"));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [TestMethod]
     public void OpenKey_ThrowsForMissingKey()
     {
         var path = CreateHive();
@@ -103,6 +120,21 @@ public sealed class RegistryHiveTests
         WriteAscii(hive, at, signature);
         WriteUInt16(hive, at + 2, 1);
         WriteInt32(hive, at + 4, child);
+        if (signature == "lh")
+        {
+            WriteUInt32(hive, at + 8, ComputeLhHash("Software"));
+        }
+    }
+
+    private static uint ComputeLhHash(string name)
+    {
+        uint hash = 0;
+        foreach (var character in name)
+        {
+            hash = hash * 37 + char.ToUpperInvariant(character);
+        }
+
+        return hash;
     }
 
     private static void WriteValue(byte[] hive, int hbin, int cell, string name, byte[] value)
