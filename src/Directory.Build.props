@@ -2,5 +2,7 @@
   <PropertyGroup>
     <!-- The publish workflow uses this value as the single source of truth. -->
     <Version>1.0.2</Version>
+    <AssemblyVersion>$(Version)</AssemblyVersion>
+    <FileVersion>$(Version)</FileVersion>
   </PropertyGroup>
 </Project>
