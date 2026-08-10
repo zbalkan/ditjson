@@ -16,13 +16,14 @@ namespace ditjson.Extractors
                 ObjectFilter.FilterOptions? filterOptions = null)
         {
             filterOptions ??= new ObjectFilter.FilterOptions();
+            var selectedTableSet = new HashSet<string>(selectedTables, StringComparer.Ordinal);
             var users = new List<User>();
             var groups = new List<Group>();
             var computers = new List<Computer>();
             var directoryObjects = new Dictionary<int, NtdsObject>();
             var userAncestorIds = new Dictionary<int, List<int>>();
 
-            if (!selectedTables.Contains("datatable"))
+            if (!selectedTableSet.Contains("datatable"))
             {
                 return (users, groups, computers);
             }
@@ -31,23 +32,20 @@ namespace ditjson.Extractors
             {
                 using var table = new Table(session, dbid, "datatable", OpenTableGrbit.ReadOnly);
                 var columnDict = Api.GetColumnDictionary(session, table);
+                if (!columnDict.ContainsKey(NtdsColumnNames.SamAccountType))
+                {
+                    throw new NtdsException("datatable is missing the sAMAccountType column");
+                }
 
                 Api.JetSetTableSequential(session, table, SetTableSequentialGrbit.None);
                 Api.MoveBeforeFirst(session, table);
 
                 var recordId = 1;
+                var failedRecords = 0;
                 while (Api.TryMoveNext(session, table))
                 {
                     try
                     {
-                        // ATTj590126 is sAMAccountType. The old implementation used
-                        // ATTj590000, which is not an AD datatable column, so every
-                        // record was skipped before it could be classified.
-                        if (!columnDict.ContainsKey(NtdsColumnNames.SamAccountType))
-                        {
-                            continue;
-                        }
-
                         var samAccountType = ColumnExtractor.GetInt32(
                             session, table, columnDict, NtdsColumnNames.SamAccountType);
                         var currentRecordId = ColumnExtractor.GetRecordId(
@@ -88,8 +86,13 @@ namespace ditjson.Extractors
                             }
                         }
                     }
+                    catch (NtdsException)
+                    {
+                        throw;
+                    }
                     catch (Exception ex)
                     {
+                        failedRecords++;
                         Console.Error.WriteLine($"[!] Error processing record {recordId}: {ex.GetType().Name}: {ex.Message}");
                     }
 
@@ -102,13 +105,22 @@ namespace ditjson.Extractors
                 {
                     ObjectFilter.CleanupUser(user, filterOptions.IncludeEmptyCollections);
                 }
+
+                if (failedRecords > 0)
+                {
+                    Console.Error.WriteLine($"[!] Skipped {failedRecords} record(s) due to extraction errors");
+                }
+            }
+            catch (NtdsException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
                 throw new NtdsException("Failed to extract objects from datatable", ex);
             }
 
-            if (selectedTables.Contains("link_table"))
+            if (selectedTableSet.Contains("link_table"))
             {
                 Console.Error.WriteLine("[*] Extracting group memberships from link_table...");
                 LinkExtractor.ExtractGroupMemberships(session, dbid, users, groups, computers);

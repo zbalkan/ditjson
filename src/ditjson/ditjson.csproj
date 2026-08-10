@@ -11,15 +11,16 @@
     <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="CommandLineParser" Version="2.9.1" />
     <PackageReference Include="Microsoft.Database.ManagedEsent" Version="3.2.0" />
     <InternalsVisibleTo Include="ditjson.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Properties\" />
   </ItemGroup>
   <PropertyGroup>
     <PublishSingleFile>true</PublishSingleFile>
     <PublishReadyToRun>true</PublishReadyToRun>
-    <!-- CommandLineParser and ManagedEsent are not trim-compatible. Publishing the
-         complete application is required to preserve their reflection-based code. -->
+    <!-- ManagedEsent is not trim-compatible. Publishing the complete application is required to preserve its reflection-based code. -->
     <PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
 </Project>

@@ -4,7 +4,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using CommandLine;
 using ditjson.Extractors;
 using ditjson.Filtering;
 using ditjson.Output;
@@ -18,25 +17,23 @@ namespace ditjson
     {
         private static readonly string[] StructuredTables = ["datatable", "link_table", "sd_table"];
 
-        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(Options))]
-        [RequiresUnreferencedCode("Calls ditjson.Program.RunOptions(Options)")]
         public static int Main(string[] args)
         {
-            args = args.Select(arg => arg switch {
-                "-h" => "--help",
-                "-v" => "--version",
-                _ => arg
-            }).ToArray();
-
-            var parser = new Parser(settings => {
-                // stdout is reserved for the JSON document.
-                settings.HelpWriter = Console.Error;
-                settings.AutoVersion = true;
-            });
-
-            return parser.ParseArguments<Options>(args)
-                .MapResult(RunOptions, errors =>
-                    errors.Any(error => error is HelpRequestedError or VersionRequestedError) ? 0 : 2);
+            switch (CliArguments.Parse(args, out var options, out var error))
+            {
+                case CliParseResult.Success:
+                    return RunOptions(options!);
+                case CliParseResult.Help:
+                    CliArguments.WriteHelp(Console.Error);
+                    return 0;
+                case CliParseResult.Version:
+                    CliArguments.WriteVersion(Console.Error);
+                    return 0;
+                default:
+                    Console.Error.WriteLine($"ditjson: {error}");
+                    CliArguments.WriteHelp(Console.Error);
+                    return 2;
+            }
         }
 
         internal static void ReportCredentialResults(List<Models.User> users,

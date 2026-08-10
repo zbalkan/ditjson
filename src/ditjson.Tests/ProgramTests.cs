@@ -1,5 +1,5 @@
 using System.Text.Json;
-using CommandLine;
+using ditjson;
 using ditjson.Models;
 
 namespace ditjson.Tests;
@@ -53,7 +53,8 @@ public class ProgramTests
 
             Assert.AreEqual(2, exitCode);
             Assert.AreEqual(string.Empty, stdout.ToString());
-            Assert.Contains("ntds.dit", stderr.ToString());
+            Assert.Contains("Usage:", stderr.ToString());
+            Assert.Contains("NTDS.dit path is required", stderr.ToString());
         }
         finally
         {
@@ -119,45 +120,50 @@ public class ProgramTests
     [TestMethod]
     public void Parser_AcceptsNtdsPositionalArgument()
     {
-        Options? parsed = null;
+        var result = CliArguments.Parse(["ntds.dit"], out var options, out var error);
 
-        new Parser(settings => settings.HelpWriter = TextWriter.Null)
-            .ParseArguments<Options>(["ntds.dit"])
-            .WithParsed(options => parsed = options);
-
-        Assert.IsNotNull(parsed);
-        Assert.AreEqual("ntds.dit", parsed.Ntds);
-        Assert.IsNull(parsed.System);
-        Assert.IsNull(parsed.Output);
-        Assert.IsFalse(parsed.Timeline);
+        Assert.AreEqual(CliParseResult.Success, result);
+        Assert.IsNull(error);
+        Assert.IsNotNull(options);
+        Assert.AreEqual("ntds.dit", options!.Ntds);
+        Assert.IsNull(options.System);
+        Assert.IsNull(options.Output);
+        Assert.IsFalse(options.Timeline);
     }
 
     [TestMethod]
     public void Parser_AcceptsSystemAndOutputArguments()
     {
-        Options? parsed = null;
+        var result = CliArguments.Parse(["ntds.dit", "SYSTEM", "-o", "domain.json"], out var options, out var error);
 
-        new Parser(settings => settings.HelpWriter = TextWriter.Null)
-            .ParseArguments<Options>(["ntds.dit", "SYSTEM", "-o", "domain.json"])
-            .WithParsed(options => parsed = options);
-
-        Assert.IsNotNull(parsed);
-        Assert.AreEqual("ntds.dit", parsed.Ntds);
-        Assert.AreEqual("SYSTEM", parsed.System);
-        Assert.AreEqual("domain.json", parsed.Output);
+        Assert.AreEqual(CliParseResult.Success, result);
+        Assert.IsNull(error);
+        Assert.IsNotNull(options);
+        Assert.AreEqual("ntds.dit", options!.Ntds);
+        Assert.AreEqual("SYSTEM", options.System);
+        Assert.AreEqual("domain.json", options.Output);
     }
 
     [TestMethod]
     public void Parser_AcceptsTimelineFlag()
     {
-        Options? parsed = null;
+        var result = CliArguments.Parse(["ntds.dit", "--timeline"], out var options, out var error);
 
-        new Parser(settings => settings.HelpWriter = TextWriter.Null)
-            .ParseArguments<Options>(["ntds.dit", "--timeline"])
-            .WithParsed(options => parsed = options);
+        Assert.AreEqual(CliParseResult.Success, result);
+        Assert.IsNull(error);
+        Assert.IsNotNull(options);
+        Assert.IsTrue(options!.Timeline);
+    }
 
-        Assert.IsNotNull(parsed);
-        Assert.IsTrue(parsed.Timeline);
+    [TestMethod]
+    public void Parser_RejectsUnknownOption()
+    {
+        var result = CliArguments.Parse(["ntds.dit", "--unknown"], out var options, out var error);
+
+        Assert.AreEqual(CliParseResult.Error, result);
+        Assert.IsNull(options);
+        Assert.IsNotNull(error);
+        Assert.Contains("Unknown option", error);
     }
 
     [TestMethod]
