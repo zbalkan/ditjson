@@ -121,8 +121,9 @@ namespace ditjson
 
                 var json = JsonOutputFormatter.FormatStructuredOutput(users, groups, computers);
 
-                // Apply crown jewels filtering (default) unless --all-data flag is set
-                if (!opts.AllData && string.IsNullOrEmpty(opts.JqQuery))
+                // Filtering is opt-in so a successful extraction can never silently
+                // produce an empty export merely because no crown-jewel query matched.
+                if (ShouldApplyCrownJewels(opts))
                 {
                     try
                     {
@@ -141,7 +142,7 @@ namespace ditjson
                 }
                 else
                 {
-                    Console.WriteLine("[*] Exporting all data without filtering (--all-data)");
+                    Console.WriteLine("[*] Exporting all structured data without crown jewels filtering");
                 }
 
                 try
@@ -169,6 +170,9 @@ namespace ditjson
                 }
             }
         }
+
+        internal static bool ShouldApplyCrownJewels(Options opts) =>
+            opts.CrownJewels && !opts.AllData && string.IsNullOrEmpty(opts.JqQuery);
 
         private static List<string> FilterTables(IEnumerable<string> tablesInOptions, Session session, JET_DBID dbid)
         {
