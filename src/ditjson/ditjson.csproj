@@ -8,7 +8,10 @@
     <Company>Info-Assure, Zafer Balkan</Company>
     <Product>ditjson</Product>
     <Copyright>Copyright © Info-Assure 2015, © Zafer Balkan 2026</Copyright>
-    <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
+    <!-- JSON contracts are provided by StructuredOutputJsonContext. Keep the
+         reflection fallback disabled so published builds cannot accidentally
+         depend on runtime metadata. -->
+    <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Database.ManagedEsent" Version="3.2.0" />
@@ -18,9 +21,14 @@
     <Folder Include="Properties\" />
   </ItemGroup>
   <PropertyGroup>
-    <PublishSingleFile>true</PublishSingleFile>
-    <PublishReadyToRun>true</PublishReadyToRun>
-    <!-- ManagedEsent is not trim-compatible. Publishing the complete application is required to preserve its reflection-based code. -->
-    <PublishTrimmed>false</PublishTrimmed>
+    <!-- Enable trimming and NativeAOT; Windows toolchain selection is handled in Directory.Build.targets or CI. -->
+    <PublishTrimmed>true</PublishTrimmed>
+    <PublishAot>true</PublishAot>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DebugType>none</DebugType>
   </PropertyGroup>
 </Project>

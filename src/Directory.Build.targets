@@ -1,0 +1,13 @@
+<Project>
+  <Target Name="UseNativeAotToolchain" BeforeTargets="LinkNative" Condition="'$(OS)' == 'Windows_NT'">
+    <PropertyGroup>
+      <CppLinker Condition="'$(DITJSON_CPP_LINKER)' != ''">$(DITJSON_CPP_LINKER)</CppLinker>
+      <CppLinker Condition="'$(DITJSON_CPP_LINKER)' == '' and '$(VCToolsInstallDir)' != ''">$(VCToolsInstallDir)bin\Hostx64\x64\link.exe</CppLinker>
+      <CppLibCreator Condition="'$(DITJSON_CPP_LIB)' != ''">$(DITJSON_CPP_LIB)</CppLibCreator>
+      <CppLibCreator Condition="'$(DITJSON_CPP_LIB)' == '' and '$(VCToolsInstallDir)' != ''">$(VCToolsInstallDir)bin\Hostx64\x64\lib.exe</CppLibCreator>
+    </PropertyGroup>
+    <ItemGroup Condition="'$(LIB)' != ''">
+      <AdditionalNativeLibraryDirectories Include="$(LIB)" />
+    </ItemGroup>
+  </Target>
+</Project>

@@ -36,6 +36,27 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      - name: Configure NativeAOT toolchain
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+          $installPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $installPath) { throw 'Visual Studio installation not found.' }
+
+          $msvcRoot = Join-Path $installPath 'VC\Tools\MSVC'
+          $msvcTools = Get-ChildItem $msvcRoot -Directory | Sort-Object Name -Descending | Select-Object -First 1
+          if (-not $msvcTools) { throw 'MSVC toolset not found.' }
+
+          $sdkRoot = 'C:\Program Files (x86)\Windows Kits\10\Lib'
+          $windowsSdk = Get-ChildItem $sdkRoot -Directory | Sort-Object Name -Descending | Select-Object -First 1
+          if (-not $windowsSdk) { throw 'Windows SDK libraries not found.' }
+
+          "VCToolsInstallDir=$($msvcTools.FullName)\" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "DITJSON_CPP_LINKER=$($msvcTools.FullName)\bin\Hostx64\x64\link.exe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "DITJSON_CPP_LIB=$($msvcTools.FullName)\bin\Hostx64\x64\lib.exe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "LIB=$($msvcTools.FullName)\lib\x64;$($windowsSdk.FullName)\ucrt\x64;$($windowsSdk.FullName)\um\x64" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Resolve release version
         id: version
         shell: bash
