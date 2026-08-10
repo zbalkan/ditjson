@@ -116,9 +116,11 @@ namespace ditjson
                 }
                 else
                 {
-                    PasswordHashDecryptor.DecryptPasswordHashes(session, dbid, users, computers, opts.System);
-                    PasswordHistoryExtractor.ExtractPasswordHistory(session, dbid, users, bootkey);
-                    SupplementalCredentialsParser.ParseSupplementalCredentials(session, dbid, users, computers);
+                    var peks = PekListExtractor.Extract(session, dbid, bootkey);
+                    Console.Error.WriteLine($"[+] Decrypted {peks.Count} password encryption key(s)");
+                    PasswordHashDecryptor.DecryptPasswordHashes(session, dbid, users, computers, peks);
+                    PasswordHistoryExtractor.ExtractPasswordHistory(session, dbid, users, peks);
+                    SupplementalCredentialsParser.ParseSupplementalCredentials(session, dbid, users, computers, peks);
                 }
             }
 

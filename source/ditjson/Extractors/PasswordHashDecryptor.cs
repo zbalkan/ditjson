@@ -9,21 +9,14 @@ namespace ditjson.Extractors
     internal static class PasswordHashDecryptor
     {
         internal static void DecryptPasswordHashes(Session session, JET_DBID dbid, List<User> users, List<Computer> computers,
-            string systemHivePath)
+            IReadOnlyList<byte[]> peks)
         {
-            var bootkey = RegistryDecryptor.ExtractBootkey(systemHivePath);
-            if (bootkey == null || bootkey.Length == 0)
-            {
-                Console.Error.WriteLine("[!] Failed to extract bootkey from SYSTEM hive");
-                return;
-            }
-
             Console.Error.WriteLine("[*] Decrypting password hashes...");
-            DecryptUserHashes(session, dbid, users, bootkey);
-            DecryptComputerHashes(session, dbid, computers, bootkey);
+            DecryptUserHashes(session, dbid, users, peks);
+            DecryptComputerHashes(session, dbid, computers, peks);
         }
 
-        private static void DecryptComputerHashes(Session session, JET_DBID dbid, List<Computer> computers, byte[] bootkey)
+        private static void DecryptComputerHashes(Session session, JET_DBID dbid, List<Computer> computers, IReadOnlyList<byte[]> peks)
         {
             if (computers == null || computers.Count == 0)
                 return;
@@ -43,7 +36,7 @@ namespace ditjson.Extractors
                     var currentRecordId = ColumnExtractor.GetRecordId(session, table, columnDict, recordId);
                     if (computerDict.TryGetValue(currentRecordId, out var computer))
                     {
-                        DecryptHashesForComputer(session, table, columnDict, computer, bootkey);
+                        DecryptHashesForComputer(session, table, columnDict, computer, peks);
                     }
                     recordId++;
                 }
@@ -56,27 +49,19 @@ namespace ditjson.Extractors
             }
         }
 
-        private static byte[]? DecryptHash(byte[] encryptedHash, byte[] bootkey)
+        internal static uint GetRid(string? sid)
         {
-            if (encryptedHash == null || encryptedHash.Length < 24 || bootkey == null || bootkey.Length == 0)
-                return null;
-
-            try
-            {
-                // Skip the first 8 bytes (salt), decrypt the remaining bytes
-                var ciphertext = new byte[encryptedHash.Length - 8];
-                Array.Copy(encryptedHash, 8, ciphertext, 0, ciphertext.Length);
-
-                return RegistryDecryptor.DecryptHash(ciphertext, bootkey);
-            }
-            catch
-            {
-                return null;
-            }
+            if (string.IsNullOrWhiteSpace(sid)) throw new InvalidOperationException("Credential-bearing object has no SID");
+            var separator = sid.LastIndexOf('-');
+            if (separator < 0 || !uint.TryParse(sid.Substring(separator + 1), out var rid)) throw new InvalidOperationException($"Invalid SID: {sid}");
+            return rid;
         }
 
+        internal static byte[] DecryptHash(byte[] encryptedHash, IReadOnlyList<byte[]> peks, uint rid) =>
+            CredentialCrypto.RemoveRidDesLayer(CredentialCrypto.UnwrapAttribute(encryptedHash, peks), rid);
+
         private static void DecryptHashesForComputer(Session session, JET_TABLEID table,
-            IDictionary<string, JET_COLUMNID> columnDict, Computer computer, byte[] bootkey)
+            IDictionary<string, JET_COLUMNID> columnDict, Computer computer, IReadOnlyList<byte[]> peks)
         {
             try
             {
@@ -85,7 +70,7 @@ namespace ditjson.Extractors
                     session, table, columnDict, NtdsColumnNames.NtHash);
                 if (ntHashEncrypted != null && ntHashEncrypted.Length >= 24)
                 {
-                    var ntHashDecrypted = DecryptHash(ntHashEncrypted, bootkey);
+                    var ntHashDecrypted = DecryptHash(ntHashEncrypted, peks, GetRid(computer.ObjectSid));
                     if (ntHashDecrypted != null && ntHashDecrypted.Length >= 16)
                     {
                         computer.PasswordHashes ??= new PasswordHashes();
@@ -98,7 +83,7 @@ namespace ditjson.Extractors
                     session, table, columnDict, NtdsColumnNames.LmHash);
                 if (lmHashEncrypted != null && lmHashEncrypted.Length >= 24)
                 {
-                    var lmHashDecrypted = DecryptHash(lmHashEncrypted, bootkey);
+                    var lmHashDecrypted = DecryptHash(lmHashEncrypted, peks, GetRid(computer.ObjectSid));
                     if (lmHashDecrypted != null && lmHashDecrypted.Length >= 16)
                     {
                         computer.PasswordHashes ??= new PasswordHashes();
@@ -113,7 +98,7 @@ namespace ditjson.Extractors
         }
 
         private static void DecryptHashesForUser(Session session, JET_TABLEID table,
-            IDictionary<string, JET_COLUMNID> columnDict, User user, byte[] bootkey)
+            IDictionary<string, JET_COLUMNID> columnDict, User user, IReadOnlyList<byte[]> peks)
         {
             try
             {
@@ -122,7 +107,7 @@ namespace ditjson.Extractors
                     session, table, columnDict, NtdsColumnNames.NtHash);
                 if (ntHashEncrypted != null && ntHashEncrypted.Length >= 24)
                 {
-                    var ntHashDecrypted = DecryptHash(ntHashEncrypted, bootkey);
+                    var ntHashDecrypted = DecryptHash(ntHashEncrypted, peks, GetRid(user.ObjectSid));
                     if (ntHashDecrypted != null && ntHashDecrypted.Length >= 16)
                     {
                         user.PasswordHashes ??= new PasswordHashes();
@@ -135,7 +120,7 @@ namespace ditjson.Extractors
                     session, table, columnDict, NtdsColumnNames.LmHash);
                 if (lmHashEncrypted != null && lmHashEncrypted.Length >= 24)
                 {
-                    var lmHashDecrypted = DecryptHash(lmHashEncrypted, bootkey);
+                    var lmHashDecrypted = DecryptHash(lmHashEncrypted, peks, GetRid(user.ObjectSid));
                     if (lmHashDecrypted != null && lmHashDecrypted.Length >= 16)
                     {
                         user.PasswordHashes ??= new PasswordHashes();
@@ -149,7 +134,7 @@ namespace ditjson.Extractors
             }
         }
 
-        private static void DecryptUserHashes(Session session, JET_DBID dbid, List<User> users, byte[] bootkey)
+        private static void DecryptUserHashes(Session session, JET_DBID dbid, List<User> users, IReadOnlyList<byte[]> peks)
         {
             if (users == null || users.Count == 0)
                 return;
@@ -169,7 +154,7 @@ namespace ditjson.Extractors
                     var currentRecordId = ColumnExtractor.GetRecordId(session, table, columnDict, recordId);
                     if (userDict.TryGetValue(currentRecordId, out var user))
                     {
-                        DecryptHashesForUser(session, table, columnDict, user, bootkey);
+                        DecryptHashesForUser(session, table, columnDict, user, peks);
                     }
                     recordId++;
                 }

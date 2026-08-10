@@ -8,9 +8,9 @@ namespace ditjson.Extractors
 {
     internal static class PasswordHistoryExtractor
     {
-        internal static void ExtractPasswordHistory(Session session, JET_DBID dbid, List<User> users, byte[] bootkey)
+        internal static void ExtractPasswordHistory(Session session, JET_DBID dbid, List<User> users, IReadOnlyList<byte[]> peks)
         {
-            if (users == null || users.Count == 0 || bootkey == null || bootkey.Length == 0)
+            if (users == null || users.Count == 0 || peks.Count == 0)
                 return;
 
             Console.Error.WriteLine("[*] Extracting password history...");
@@ -30,7 +30,7 @@ namespace ditjson.Extractors
                     var currentRecordId = ColumnExtractor.GetRecordId(session, table, columnDict, recordId);
                     if (userDict.TryGetValue(currentRecordId, out var user))
                     {
-                        ExtractHistoryForUser(session, table, columnDict, user, bootkey);
+                        ExtractHistoryForUser(session, table, columnDict, user, peks);
                     }
                     recordId++;
                 }
@@ -44,7 +44,7 @@ namespace ditjson.Extractors
         }
 
         private static void ExtractHistoryForUser(Session session, JET_TABLEID table,
-            IDictionary<string, JET_COLUMNID> columnDict, User user, byte[] bootkey)
+            IDictionary<string, JET_COLUMNID> columnDict, User user, IReadOnlyList<byte[]> peks)
         {
             try
             {
@@ -53,7 +53,7 @@ namespace ditjson.Extractors
                 if (pwdHistoryData == null || pwdHistoryData.Length == 0)
                     return;
 
-                var hashes = ParsePasswordHistory(pwdHistoryData, bootkey);
+                var hashes = ParsePasswordHistory(pwdHistoryData, peks, PasswordHashDecryptor.GetRid(user.ObjectSid));
                 if (hashes != null && hashes.Count > 0)
                 {
                     user.PasswordHistory = hashes;
@@ -67,91 +67,22 @@ namespace ditjson.Extractors
 
         private static bool isZeroHash(byte[] hash)
         {
-            if (hash == null || hash.Length < 16)
-                return true;
-
-            for (var i = 0; i < 16; i++)
-            {
-                if (hash[i] != 0)
-                    return false;
-            }
-
+            if (hash == null || hash.Length < 16) return true;
+            for (var i = 0; i < 16; i++) if (hash[i] != 0) return false;
             return true;
         }
 
-        private static bool looksEncrypted(byte[] data, int offset)
-        {
-            // Encrypted hashes have salt prefix (8 bytes) followed by ciphertext
-            // Look for entropy patterns typical of encrypted data
-            if (offset + 24 > data.Length)
-                return false;
-
-            // Sample first 8 bytes (salt) - should have some entropy
-            var salt = new byte[8];
-            Array.Copy(data, offset, salt, 0, 8);
-
-            var uniqueBytes = salt.Distinct().Count();
-            return uniqueBytes > 2; // Real salt should have decent entropy
-        }
-
-        private static List<string> ParsePasswordHistory(byte[] data, byte[] bootkey)
+        internal static List<string> ParsePasswordHistory(byte[] data, IReadOnlyList<byte[]> peks, uint rid)
         {
             var hashes = new List<string>();
-
             try
             {
-                // Password history format: series of 16-byte NT hashes or 24-byte encrypted hashes
-                // Read in chunks and decrypt each hash
-                if (data.Length < 16)
-                    return hashes;
-
-                var offset = 0;
-
-                // Skip version/reserved bytes if present
-                if (data.Length > 4)
+                var plain = CredentialCrypto.RemoveRidDesLayer(CredentialCrypto.UnwrapAttribute(data, peks), rid);
+                for (var offset = 0; offset + 16 <= plain.Length; offset += 16)
                 {
-                    var possibleVersion = BitConverter.ToInt32(data, 0);
-                    // If first 4 bytes look like a version number, skip them
-                    if (possibleVersion < 256)
-                        offset = 4;
+                    var hashData = plain.AsSpan(offset, 16).ToArray();
+                    if (!isZeroHash(hashData)) hashes.Add(BitConverter.ToString(hashData).Replace("-", "").ToUpperInvariant());
                 }
-
-                // Process 16-byte NT hashes (or 24-byte if encrypted with salt)
-                while (offset + 16 <= data.Length)
-                {
-                    var hashData = new byte[16];
-                    Array.Copy(data, offset, hashData, 0, 16);
-
-                    // Try to decrypt if it looks like it might be encrypted
-                    if (offset + 24 <= data.Length && looksEncrypted(data, offset))
-                    {
-                        var encrypted = new byte[24];
-                        Array.Copy(data, offset, encrypted, 0, 24);
-                        var decrypted = RegistryDecryptor.DecryptHash(encrypted, bootkey);
-                        if (decrypted != null && decrypted.Length >= 16)
-                        {
-                            hashData = new byte[16];
-                            Array.Copy(decrypted, 0, hashData, 0, 16);
-                            offset += 24;
-                        }
-                        else
-                        {
-                            offset += 16;
-                        }
-                    }
-                    else
-                    {
-                        offset += 16;
-                    }
-
-                    // Check if hash is all zeros (indicate no password)
-                    if (!isZeroHash(hashData))
-                    {
-                        var hashHex = BitConverter.ToString(hashData).Replace("-", "").ToUpperInvariant();
-                        hashes.Add(hashHex);
-                    }
-                }
-
                 return hashes;
             }
             catch
