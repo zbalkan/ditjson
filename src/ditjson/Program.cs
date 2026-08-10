@@ -65,7 +65,6 @@ namespace ditjson
             }
         }
 
-        [RequiresUnreferencedCode("Calls ditjson.Output.JsonOutputFormatter.FormatStructuredOutput")]
         internal static int RunOptions(Options opts)
         {
             if (!File.Exists(opts.Ntds))
@@ -105,7 +104,6 @@ namespace ditjson
             Console.Error.WriteLine($"[+] JSON export complete: {output}");
         }
 
-        [RequiresUnreferencedCode("Calls ditjson.Output.JsonOutputFormatter.FormatStructuredOutput")]
         private static string Extract(Options opts)
         {
             var databaseMetadata = DatabaseFileMetadata.Read(opts.Ntds);
