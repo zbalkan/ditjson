@@ -47,7 +47,7 @@ namespace ditjson.Extractors
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"[!] Error decrypting computer hashes: {ex.Message}");
+                Console.Error.WriteLine($"[!] Error decrypting computer hashes: {ex.GetType().Name}: {ex.Message}");
             }
         }
 
@@ -103,7 +103,7 @@ namespace ditjson.Extractors
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"[!] Error decrypting hashes for computer {computer.SamAccountName}: {ex.Message}");
+                Console.Error.WriteLine($"[!] Error decrypting hashes for computer {computer.SamAccountName}: {ex.GetType().Name}: {ex.Message}");
             }
         }
 
@@ -140,7 +140,7 @@ namespace ditjson.Extractors
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"[!] Error decrypting hashes for user {user.SamAccountName}: {ex.Message}");
+                Console.Error.WriteLine($"[!] Error decrypting hashes for user {user.SamAccountName}: {ex.GetType().Name}: {ex.Message}");
             }
         }
 

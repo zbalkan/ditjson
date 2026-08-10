@@ -90,7 +90,7 @@ namespace ditjson.Extractors
                     }
                     catch (Exception ex)
                     {
-                        Console.Error.WriteLine($"[!] Error processing record {recordId}: {ex.Message}");
+                        Console.Error.WriteLine($"[!] Error processing record {recordId}: {ex.GetType().Name}: {ex.Message}");
                     }
 
                     recordId++;

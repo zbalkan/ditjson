@@ -50,6 +50,19 @@ public class FieldCleanerTests
     }
 
     [TestMethod]
+    public void CleanComputer_WithEmptyObjectSid_SetsToNull()
+    {
+        var computer = new Computer
+        {
+            ObjectSid = string.Empty
+        };
+
+        FieldCleaner.CleanComputer(computer);
+
+        Assert.IsNull(computer.ObjectSid);
+    }
+
+    [TestMethod]
     public void CleanGroup_WithNullObject_Handles() =>
         // Act & Assert (should not throw)
         FieldCleaner.CleanGroup(null);

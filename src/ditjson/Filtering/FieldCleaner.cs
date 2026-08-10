@@ -1,4 +1,3 @@
-using System;
 using ditjson.Models;
 
 namespace ditjson.Filtering
@@ -13,7 +12,7 @@ namespace ditjson.Filtering
             }
 
             computer.Name = CleanString(computer.Name)!;
-            computer.SamAccountName = CleanString(computer!.SamAccountName)!;
+            computer.SamAccountName = CleanString(computer.SamAccountName)!;
             computer.DnsHostName = CleanString(computer.DnsHostName)!;
             computer.OperatingSystem = CleanString(computer.OperatingSystem)!;
             computer.OperatingSystemVersion = CleanString(computer.OperatingSystemVersion)!;
@@ -21,11 +20,6 @@ namespace ditjson.Filtering
             if (computer.DialInAccessPermission < 0)
             {
                 computer.DialInAccessPermission = 0;
-            }
-
-            if (computer.ObjectGuid == Guid.Empty)
-            {
-                computer.ObjectGuid = Guid.Empty;
             }
 
             if (string.IsNullOrEmpty(computer.ObjectSid))
@@ -44,11 +38,6 @@ namespace ditjson.Filtering
             group.Name = CleanString(group.Name);
             group.SamAccountName = CleanString(group.SamAccountName);
             group.GroupType = CleanString(group.GroupType);
-
-            if (group.ObjectGuid == Guid.Empty)
-            {
-                group.ObjectGuid = Guid.Empty;
-            }
 
             if (string.IsNullOrEmpty(group.ObjectSid))
             {
@@ -87,11 +76,6 @@ namespace ditjson.Filtering
             if (user.DialInAccessPermission < 0)
             {
                 user.DialInAccessPermission = 0;
-            }
-
-            if (user.ObjectGuid == Guid.Empty)
-            {
-                user.ObjectGuid = Guid.Empty;
             }
 
             if (string.IsNullOrEmpty(user.ObjectSid))

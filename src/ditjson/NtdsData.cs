@@ -67,18 +67,14 @@ namespace ditjson
                 Api.JetSetTableSequential(session, table, SetTableSequentialGrbit.None);
                 Api.MoveBeforeFirst(session, table);
 
-                var columnids = Api.GetColumnDictionary(session, table);
-                var formattedData = string.Empty;
                 while (Api.TryMoveNext(session, table))
                 {
                     var obj = new Dictionary<string, object>();
                     foreach (var column in columns)
                     {
-                        var test = columnids[column.Name];
-                        formattedData = NtdsDataTypes.GetFormattedValue(session, table, column);
-                        var cellValue = formattedData;
+                        var cellValue = NtdsDataTypes.GetFormattedValue(session, table, column);
 
-                        // Ignore emptry or null values
+                        // Ignore empty or null values
                         if (!string.IsNullOrEmpty(cellValue))
                         {
                             if (NtdsMetadata.AttributeMapping.TryGetValue(column.Name, out var mappedValue))

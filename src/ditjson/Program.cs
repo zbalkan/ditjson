@@ -64,7 +64,7 @@ namespace ditjson
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"ditjson: extraction failed: {ex.Message}");
+                Console.Error.WriteLine($"ditjson: extraction failed: {ex.GetType().Name}: {ex.Message}");
                 return 1;
             }
         }
@@ -163,16 +163,7 @@ namespace ditjson
         private static List<string> FilterTables(Session session, JET_DBID dbid)
         {
             var tablesInDb = new HashSet<string>(Api.GetTableNames(session, dbid), StringComparer.Ordinal);
-            var selected = new List<string>();
-            foreach (var table in StructuredTables)
-            {
-                if (tablesInDb.Contains(table))
-                {
-                    selected.Add(table);
-                }
-            }
-
-            return selected;
+            return StructuredTables.Where(tablesInDb.Contains).ToList();
         }
     }
 }

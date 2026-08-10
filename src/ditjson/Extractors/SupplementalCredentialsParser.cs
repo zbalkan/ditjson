@@ -64,7 +64,7 @@ namespace ditjson.Extractors
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"[!] Error parsing computer credentials: {ex.Message}");
+                Console.Error.WriteLine($"[!] Error parsing computer credentials: {ex.GetType().Name}: {ex.Message}");
             }
         }
 
@@ -99,7 +99,7 @@ namespace ditjson.Extractors
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"[!] Error parsing supplemental credentials for computer {computer.SamAccountName}: {ex.Message}");
+                Console.Error.WriteLine($"[!] Error parsing supplemental credentials for computer {computer.SamAccountName}: {ex.GetType().Name}: {ex.Message}");
             }
         }
 
@@ -134,7 +134,7 @@ namespace ditjson.Extractors
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"[!] Error parsing supplemental credentials for user {user.SamAccountName}: {ex.Message}");
+                Console.Error.WriteLine($"[!] Error parsing supplemental credentials for user {user.SamAccountName}: {ex.GetType().Name}: {ex.Message}");
             }
         }
 

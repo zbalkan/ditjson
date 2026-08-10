@@ -88,6 +88,35 @@ public class ProgramTests
     }
 
     [TestMethod]
+    public void Main_MissingSystem_ReturnsRuntimeFailureWithoutStdout()
+    {
+        var stdout = new StringWriter();
+        var stderr = new StringWriter();
+        var originalOut = Console.Out;
+        var originalError = Console.Error;
+        var ntdsPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".dit");
+        File.WriteAllText(ntdsPath, string.Empty);
+
+        try
+        {
+            Console.SetOut(stdout);
+            Console.SetError(stderr);
+
+            var exitCode = Program.Main([ntdsPath, Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".hive")]);
+
+            Assert.AreEqual(1, exitCode);
+            Assert.AreEqual(string.Empty, stdout.ToString());
+            Assert.Contains("SYSTEM hive not found", stderr.ToString());
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+            Console.SetError(originalError);
+            File.Delete(ntdsPath);
+        }
+    }
+
+    [TestMethod]
     public void Parser_AcceptsNtdsPositionalArgument()
     {
         Options? parsed = null;
