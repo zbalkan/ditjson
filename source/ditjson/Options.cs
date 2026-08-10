@@ -49,5 +49,11 @@ namespace ditjson
 
         [Option("extract-supplemental", Required = false, Default = false, HelpText = "Extract supplemental credentials and Kerberos keys.")]
         public bool ExtractSupplemental { get; set; }
+
+        [Option("all-data", Required = false, Default = false, HelpText = "Export all data without JQ filtering (default exports crown jewels only).")]
+        public bool AllData { get; set; }
+
+        [Option("jq-query", Required = false, Default = "", HelpText = "Custom JQ query to filter results (overrides default crown jewels).")]
+        public string JqQuery { get; set; }
     }
 }

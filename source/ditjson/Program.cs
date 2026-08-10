@@ -9,6 +9,7 @@ using Microsoft.Isam.Esent.Interop;
 using ditjson.Extractors;
 using ditjson.Filtering;
 using ditjson.Output;
+using ditjson.Querying;
 
 [assembly: InternalsVisibleTo("ditjson.Tests")]
 
@@ -92,24 +93,24 @@ namespace ditjson
                 // Extract supplemental credentials if requested
                 if (opts.ExtractSupplemental)
                 {
-                    SupplementalCredentialsParser.ParseSupplementalCredentials(session, dbid, users, computers);
+                    Extractors.SupplementalCredentialsParser.ParseSupplementalCredentials(session, dbid, users, computers);
                 }
 
                 // Extract password hashes and history if SYSTEM hive is provided
                 if ((opts.ExtractHashes || opts.ExtractHistory) && !string.IsNullOrEmpty(opts.SystemHive))
                 {
-                    var bootkey = RegistryDecryptor.ExtractBootkey(opts.SystemHive);
+                    var bootkey = Extractors.RegistryDecryptor.ExtractBootkey(opts.SystemHive);
                     if (bootkey != null && bootkey.Length > 0)
                     {
                         if (opts.ExtractHashes)
                         {
                             Console.WriteLine("[*] Extracting password hashes...");
-                            PasswordHashDecryptor.DecryptPasswordHashes(session, dbid, users, computers, opts.SystemHive);
+                            Extractors.PasswordHashDecryptor.DecryptPasswordHashes(session, dbid, users, computers, opts.SystemHive);
                         }
 
                         if (opts.ExtractHistory)
                         {
-                            PasswordHistoryExtractor.ExtractPasswordHistory(session, dbid, users, bootkey);
+                            Extractors.PasswordHistoryExtractor.ExtractPasswordHistory(session, dbid, users, bootkey);
                         }
                     }
                     else if (opts.ExtractHashes || opts.ExtractHistory)
@@ -119,6 +120,29 @@ namespace ditjson
                 }
 
                 var json = JsonOutputFormatter.FormatStructuredOutput(users, groups, computers);
+
+                // Apply crown jewels filtering (default) unless --all-data flag is set
+                if (!opts.AllData && string.IsNullOrEmpty(opts.JqQuery))
+                {
+                    try
+                    {
+                        Console.WriteLine("[*] Applying crown jewels queries (optimized single-pass)...");
+                        json = CrownJewelsFilterOptimized.ApplyCrownJewels(json);
+                        Console.WriteLine("[+] Filtering complete");
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new NtdsException("Crown jewels filtering failed. Use --all-data to skip filtering.", ex);
+                    }
+                }
+                else if (!string.IsNullOrEmpty(opts.JqQuery))
+                {
+                    Console.WriteLine($"[!] Custom JQ queries not yet implemented. Use standard jq: ditjson ... | jq '{opts.JqQuery}'");
+                }
+                else
+                {
+                    Console.WriteLine("[*] Exporting all data without filtering (--all-data)");
+                }
 
                 try
                 {

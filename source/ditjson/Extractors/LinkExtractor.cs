@@ -60,6 +60,7 @@ namespace ditjson.Extractors
                 }
 
                 Api.JetResetTableSequential(session, table, ResetTableSequentialGrbit.None);
+
             }
             catch (Exception ex)
             {

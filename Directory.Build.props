@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <!-- The publish workflow uses this value as the single source of truth. -->
+    <Version>1.0.2</Version>
+  </PropertyGroup>
+</Project>

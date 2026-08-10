@@ -40,13 +40,13 @@ namespace ditjson.Decoders
                 0x30000001 => "Computer",
                 0x30000002 => "Trust",
                 0x10000000 => "SAM_GROUP_OBJECT",
-                0x10000001 => "SAM_NON_SECURITY_GROUP_OBJECT",
+            0x10000001 => "SAM_NON_SECURITY_GROUP_OBJECT",
                 0x20000000 => "SAM_ALIAS_OBJECT",
-                0x20000001 => "SAM_NON_SECURITY_ALIAS_OBJECT",
+            0x20000001 => "SAM_NON_SECURITY_ALIAS_OBJECT",
                 0x40000000 => "SAM_APP_BASIC_GROUP",
-                0x40000001 => "SAM_APP_QUERY_GROUP",
+            0x40000001 => "SAM_APP_QUERY_GROUP",
                 _ => "Unknown"
-            };
+        };
         }
 
         internal static string DecodeGroupType(int groupType)

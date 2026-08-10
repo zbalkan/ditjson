@@ -1,14 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <TargetFramework>net8.0</TargetFramework>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
-        <IsPackable>false</IsPackable>
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
         <IsTestProject>true</IsTestProject>
-    </PropertyGroup>
+  </PropertyGroup>
 
-    <ItemGroup>
+  <ItemGroup>
         <PackageReference Include="coverlet.collector" Version="6.0.4">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>
@@ -17,14 +17,14 @@
         </PackageReference>
 
         <PackageReference Include="MSTest" Version="4.3.2" />
-    </ItemGroup>
+  </ItemGroup>
 
-    <ItemGroup>
-        <ProjectReference Include="../ditjson/ditjson.csproj" />
-    </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../ditjson/ditjson.csproj" />
+  </ItemGroup>
 
-    <ItemGroup>
+  <ItemGroup>
         <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
-    </ItemGroup>
+  </ItemGroup>
 
 </Project>
