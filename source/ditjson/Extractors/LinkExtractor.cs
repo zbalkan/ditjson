@@ -25,42 +25,41 @@ namespace ditjson.Extractors
             try
             {
                 using var table = new Table(session, dbid, "link_table", OpenTableGrbit.ReadOnly);
-                var columnDict = Api.GetColumnDictionary(session, table);
+                    var columnDict = Api.GetColumnDictionary(session, table);
 
-                if (!columnDict.ContainsKey("ATTj590001") || !columnDict.ContainsKey("ATTj590002") || !columnDict.ContainsKey("ATTk590005"))
-                    return;
+                    if (!columnDict.ContainsKey("ATTj590001") || !columnDict.ContainsKey("ATTj590002") || !columnDict.ContainsKey("ATTk590005"))
+                        return;
 
-                Api.JetSetTableSequential(session, table, SetTableSequentialGrbit.None);
-                Api.MoveBeforeFirst(session, table);
+                    Api.JetSetTableSequential(session, table, SetTableSequentialGrbit.None);
+                    Api.MoveBeforeFirst(session, table);
 
-                while (Api.TryMoveNext(session, table))
-                {
-                    try
+                    while (Api.TryMoveNext(session, table))
                     {
-                        var backLinkAttribute = ColumnExtractor.GetInt32(session, table, columnDict, "ATTj590001");
-                        var sourceRecordId = ColumnExtractor.GetInt32(session, table, columnDict, "ATTj590002");
-                        var targetRecordId = ColumnExtractor.GetInt32(session, table, columnDict, "ATTk590005");
-                        var deletedTime = ColumnExtractor.GetString(session, table, columnDict, "ATTm590006");
+                        try
+                        {
+                            var backLinkAttribute = ColumnExtractor.GetInt32(session, table, columnDict, "ATTj590001");
+                            var sourceRecordId = ColumnExtractor.GetInt32(session, table, columnDict, "ATTj590002");
+                            var targetRecordId = ColumnExtractor.GetInt32(session, table, columnDict, "ATTk590005");
+                            var deletedTime = ColumnExtractor.GetString(session, table, columnDict, "ATTm590006");
 
-                        // memberOf relationship (0x20000210)
-                        if (backLinkAttribute == MEMBEROF_ATTR)
-                        {
-                            ProcessMemberOf(sourceRecordId, targetRecordId, deletedTime, userDict, computerDict, groupDict);
+                            // memberOf relationship (0x20000210)
+                            if (backLinkAttribute == MEMBEROF_ATTR)
+                            {
+                                ProcessMemberOf(sourceRecordId, targetRecordId, deletedTime, userDict, computerDict, groupDict);
+                            }
+                            // member relationship (0x200000d8)
+                            else if (backLinkAttribute == MEMBER_ATTR)
+                            {
+                                ProcessMember(sourceRecordId, targetRecordId, deletedTime, groupDict, userDict, computerDict);
+                            }
                         }
-                        // member relationship (0x200000d8)
-                        else if (backLinkAttribute == MEMBER_ATTR)
+                        catch (Exception ex)
                         {
-                            ProcessMember(sourceRecordId, targetRecordId, deletedTime, groupDict, userDict, computerDict);
+                            Console.WriteLine($"[!] Error processing link record: {ex.Message}");
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"[!] Error processing link record: {ex.Message}");
-                    }
-                }
 
-                Api.JetResetTableSequential(session, table, ResetTableSequentialGrbit.None);
-
+                    Api.JetResetTableSequential(session, table, ResetTableSequentialGrbit.None);
             }
             catch (Exception ex)
             {

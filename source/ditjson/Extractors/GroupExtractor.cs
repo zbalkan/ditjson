@@ -11,13 +11,6 @@ namespace ditjson.Extractors
         internal static Group ExtractGroup(Session session, JET_TABLEID table, int recordId,
             IDictionary<string, JET_COLUMNID> columnDict)
         {
-            var sid = string.Empty;
-            if (Environment.OSVersion.Platform == PlatformID.Win32NT)
-            {
-                sid = SidDecoder.Decode(ColumnExtractor.GetBinary(session, table, columnDict,
-                    "ATTr589970")) ?? string.Empty;
-            }
-
             var group = new Group
             {
                 RecordId = recordId,
@@ -25,7 +18,8 @@ namespace ditjson.Extractors
                 ObjectClass = "group",
                 ObjectGuid = GuidDecoder.Decode(ColumnExtractor.GetBinary(session, table,
                     columnDict, "ATTb131353")),
-                ObjectSid = sid,
+                ObjectSid = SidDecoder.Decode(ColumnExtractor.GetBinary(session, table,
+                    columnDict, "ATTr589970")),
 
                 SamAccountName = ColumnExtractor.GetString(session, table, columnDict,
                     "ATTm590045")!,

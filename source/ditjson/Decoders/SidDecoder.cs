@@ -1,11 +1,12 @@
 using System;
-using System.Security.Principal;
+using System.Text;
 
 namespace ditjson.Decoders
 {
     internal static class SidDecoder
     {
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Interoperability", "CA1416:Validate platform compatibility", Justification = "<Pending>")]
+        // Manual binary SID parsing instead of System.Security.Principal.SecurityIdentifier,
+        // which throws PlatformNotSupportedException on non-Windows platforms.
         internal static string? Decode(byte[]? sidBytes)
         {
             if (sidBytes == null || sidBytes.Length < 8)
@@ -13,8 +14,29 @@ namespace ditjson.Decoders
 
             try
             {
-                var sid = new SecurityIdentifier(sidBytes, 0);
-                return sid.Value;
+                var revision = sidBytes[0];
+                if (revision > 15)
+                    return null;
+
+                var subAuthorityCount = sidBytes[1];
+                if (sidBytes.Length < 8 + (subAuthorityCount * 4))
+                    return null;
+
+                long authority = 0;
+                for (var i = 2; i <= 7; i++)
+                    authority = (authority << 8) | sidBytes[i];
+
+                var sb = new StringBuilder("S-").Append(revision).Append('-').Append(authority);
+
+                var offset = 8;
+                for (var i = 0; i < subAuthorityCount; i++)
+                {
+                    var subAuthority = BitConverter.ToUInt32(sidBytes, offset);
+                    sb.Append('-').Append(subAuthority);
+                    offset += 4;
+                }
+
+                return sb.ToString();
             }
             catch
             {

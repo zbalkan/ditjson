@@ -36,23 +36,23 @@ namespace ditjson.Extractors
             try
             {
                 using var table = new Table(session, dbid, "datatable", OpenTableGrbit.ReadOnly);
-                var columnDict = Api.GetColumnDictionary(session, table);
-                var userDict = users.ToDictionary(u => u.RecordId);
+                    var columnDict = Api.GetColumnDictionary(session, table);
+                    var userDict = users.ToDictionary(u => u.RecordId);
 
-                Api.JetSetTableSequential(session, table, SetTableSequentialGrbit.None);
-                Api.MoveBeforeFirst(session, table);
+                    Api.JetSetTableSequential(session, table, SetTableSequentialGrbit.None);
+                    Api.MoveBeforeFirst(session, table);
 
                 var recordId = 1;
-                while (Api.TryMoveNext(session, table))
-                {
-                    if (userDict.TryGetValue(recordId, out var user))
+                    while (Api.TryMoveNext(session, table))
                     {
-                        DecryptHashesForUser(session, table, columnDict, user, bootkey);
+                        if (userDict.TryGetValue(recordId, out var user))
+                        {
+                            DecryptHashesForUser(session, table, columnDict, user, bootkey);
+                        }
+                        recordId++;
                     }
-                    recordId++;
-                }
 
-                Api.JetResetTableSequential(session, table, ResetTableSequentialGrbit.None);
+                    Api.JetResetTableSequential(session, table, ResetTableSequentialGrbit.None);
             }
             catch (Exception ex)
             {
@@ -68,23 +68,23 @@ namespace ditjson.Extractors
             try
             {
                 using var table = new Table(session, dbid, "datatable", OpenTableGrbit.ReadOnly);
-                var columnDict = Api.GetColumnDictionary(session, table);
-                var computerDict = computers.ToDictionary(c => c.RecordId);
+                    var columnDict = Api.GetColumnDictionary(session, table);
+                    var computerDict = computers.ToDictionary(c => c.RecordId);
 
-                Api.JetSetTableSequential(session, table, SetTableSequentialGrbit.None);
-                Api.MoveBeforeFirst(session, table);
+                    Api.JetSetTableSequential(session, table, SetTableSequentialGrbit.None);
+                    Api.MoveBeforeFirst(session, table);
 
                 var recordId = 1;
-                while (Api.TryMoveNext(session, table))
-                {
-                    if (computerDict.TryGetValue(recordId, out var computer))
+                    while (Api.TryMoveNext(session, table))
                     {
-                        DecryptHashesForComputer(session, table, columnDict, computer, bootkey);
+                        if (computerDict.TryGetValue(recordId, out var computer))
+                        {
+                            DecryptHashesForComputer(session, table, columnDict, computer, bootkey);
+                        }
+                        recordId++;
                     }
-                    recordId++;
-                }
 
-                Api.JetResetTableSequential(session, table, ResetTableSequentialGrbit.None);
+                    Api.JetResetTableSequential(session, table, ResetTableSequentialGrbit.None);
             }
             catch (Exception ex)
             {

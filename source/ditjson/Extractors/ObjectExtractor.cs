@@ -23,61 +23,61 @@ namespace ditjson.Extractors
             try
             {
                 using var table = new Table(session, dbid, "datatable", OpenTableGrbit.ReadOnly);
-                var columnDict = Api.GetColumnDictionary(session, table);
+                    var columnDict = Api.GetColumnDictionary(session, table);
 
-                Api.JetSetTableSequential(session, table, SetTableSequentialGrbit.None);
-                Api.MoveBeforeFirst(session, table);
+                    Api.JetSetTableSequential(session, table, SetTableSequentialGrbit.None);
+                    Api.MoveBeforeFirst(session, table);
 
                 var recordId = 1;
-                while (Api.TryMoveNext(session, table))
-                {
-                    try
+                    while (Api.TryMoveNext(session, table))
                     {
-                        if (!columnDict.ContainsKey("ATTj590000"))
-                            continue;
+                        try
+                        {
+                            if (!columnDict.ContainsKey("ATTj590000"))
+                                continue;
 
-                        var objectClassId = ColumnExtractor.GetInt32(session, table, columnDict, "ATTj590000");
+                            var objectClassId = ColumnExtractor.GetInt32(session, table, columnDict, "ATTj590000");
 
-                        if (ObjectClassifier.IsUserObject(objectClassId))
-                        {
-                            var user = UserExtractor.ExtractUser(session, table, recordId, columnDict);
-                            FieldCleaner.CleanUser(user);
-                            if (ObjectFilter.ShouldIncludeUser(user, filterOptions))
+                            if (ObjectClassifier.IsUserObject(objectClassId))
                             {
-                                ObjectFilter.CleanupUser(user, filterOptions.IncludeEmptyCollections);
-                                users.Add(user);
+                                var user = UserExtractor.ExtractUser(session, table, recordId, columnDict);
+                                FieldCleaner.CleanUser(user);
+                                if (ObjectFilter.ShouldIncludeUser(user, filterOptions))
+                                {
+                                    ObjectFilter.CleanupUser(user, filterOptions.IncludeEmptyCollections);
+                                    users.Add(user);
+                                }
+                            }
+                            else if (ObjectClassifier.IsGroupObject(objectClassId))
+                            {
+                                var group = GroupExtractor.ExtractGroup(session, table, recordId, columnDict);
+                                FieldCleaner.CleanGroup(group);
+                                if (ObjectFilter.ShouldIncludeGroup(group, filterOptions))
+                                {
+                                    ObjectFilter.CleanupGroup(group, filterOptions.IncludeEmptyCollections);
+                                    groups.Add(group);
+                                }
+                            }
+                            else if (ObjectClassifier.IsComputerObject(objectClassId))
+                            {
+                                var computer = ComputerExtractor.ExtractComputer(session, table, recordId, columnDict);
+                                FieldCleaner.CleanComputer(computer);
+                                if (ObjectFilter.ShouldIncludeComputer(computer, filterOptions))
+                                {
+                                    ObjectFilter.CleanupComputer(computer, filterOptions.IncludeEmptyCollections);
+                                    computers.Add(computer);
+                                }
                             }
                         }
-                        else if (ObjectClassifier.IsGroupObject(objectClassId))
+                        catch (Exception ex)
                         {
-                            var group = GroupExtractor.ExtractGroup(session, table, recordId, columnDict);
-                            FieldCleaner.CleanGroup(group);
-                            if (ObjectFilter.ShouldIncludeGroup(group, filterOptions))
-                            {
-                                ObjectFilter.CleanupGroup(group, filterOptions.IncludeEmptyCollections);
-                                groups.Add(group);
-                            }
+                            Console.WriteLine($"[!] Error processing record {recordId}: {ex.Message}");
                         }
-                        else if (ObjectClassifier.IsComputerObject(objectClassId))
-                        {
-                            var computer = ComputerExtractor.ExtractComputer(session, table, recordId, columnDict);
-                            FieldCleaner.CleanComputer(computer);
-                            if (ObjectFilter.ShouldIncludeComputer(computer, filterOptions))
-                            {
-                                ObjectFilter.CleanupComputer(computer, filterOptions.IncludeEmptyCollections);
-                                computers.Add(computer);
-                            }
-                        }
+
+                        recordId++;
                     }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"[!] Error processing record {recordId}: {ex.Message}");
-                    }
 
-                    recordId++;
-                }
-
-                Api.JetResetTableSequential(session, table, ResetTableSequentialGrbit.None);
+                    Api.JetResetTableSequential(session, table, ResetTableSequentialGrbit.None);
             }
             catch (Exception ex)
             {

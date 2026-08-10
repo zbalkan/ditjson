@@ -19,15 +19,15 @@ namespace ditjson.Extractors
             try
             {
                 using var fs = new FileStream(systemHivePath, FileMode.Open, FileAccess.Read);
-                // Validate registry file signature
+                    // Validate registry file signature
                 var signature = new byte[4];
-                fs.Read(signature, 0, 4);
-                if (System.Text.Encoding.ASCII.GetString(signature) != "regf")
-                    return null;
+                    fs.Read(signature, 0, 4);
+                    if (System.Text.Encoding.ASCII.GetString(signature) != "regf")
+                        return null;
 
-                // Read bootkey from registry structure
-                // The bootkey is derived from the Class key class data
-                return ExtractBootkeyFromRegistry(fs);
+                    // Read bootkey from registry structure
+                    // The bootkey is derived from the Class key class data
+                    return ExtractBootkeyFromRegistry(fs);
             }
             catch (Exception ex)
             {
