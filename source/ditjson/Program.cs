@@ -121,10 +121,40 @@ namespace ditjson
                     PasswordHashDecryptor.DecryptPasswordHashes(session, dbid, users, computers, peks);
                     PasswordHistoryExtractor.ExtractPasswordHistory(session, dbid, users, peks);
                     SupplementalCredentialsParser.ParseSupplementalCredentials(session, dbid, users, computers, peks);
+                    ReportCredentialResults(users, computers);
                 }
             }
 
             return JsonOutputFormatter.FormatStructuredOutput(users, groups, computers);
+        }
+
+        internal static void ReportCredentialResults(List<Models.User> users,
+            List<Models.Computer> computers)
+        {
+            var userHashes = users.Count(user => user.PasswordHashes?.NtHash != null ||
+                                                 user.PasswordHashes?.LmHash != null);
+            var computerHashes = computers.Count(computer => computer.PasswordHashes?.NtHash != null ||
+                                                             computer.PasswordHashes?.LmHash != null);
+            var historyHashes = users.Sum(user => (user.PasswordHistory?.Count ?? 0) +
+                                                   (user.LmPasswordHistory?.Count ?? 0));
+            var kerberosKeys = users.Sum(user => user.SupplementalCredentials?.KerberosKeys?.Count ?? 0) +
+                               computers.Sum(computer =>
+                                   computer.SupplementalCredentials?.KerberosKeys?.Count ?? 0);
+            var clearTextPasswords = users.Count(user =>
+                                         !string.IsNullOrEmpty(user.SupplementalCredentials?.ClearTextPassword)) +
+                                     computers.Count(computer =>
+                                         !string.IsNullOrEmpty(computer.SupplementalCredentials?.ClearTextPassword));
+
+            Console.Error.WriteLine($"[+] Recovered credentials: {userHashes} user hash set(s), " +
+                                    $"{computerHashes} computer hash set(s), {historyHashes} history hash(es), " +
+                                    $"{kerberosKeys} Kerberos key(s), {clearTextPasswords} cleartext password(s)");
+            Console.Error.WriteLine("[*] Password encryption keys are used internally and are not exported to JSON");
+
+            if (userHashes + computerHashes == 0)
+            {
+                Console.Error.WriteLine("[!] No account password hashes were recovered; verify that the NTDS.dit " +
+                                        "and SYSTEM hive are a matching pair and contain credential attributes");
+            }
         }
 
         private static List<string> FilterTables(Session session, JET_DBID dbid)

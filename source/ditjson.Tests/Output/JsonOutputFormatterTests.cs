@@ -30,4 +30,48 @@ public class JsonOutputFormatterTests
         Assert.IsFalse(root.GetProperty("users")[0].TryGetProperty("SamAccountName", out _));
         Assert.Contains("<Alice>", json);
     }
+
+    [TestMethod]
+    public void FormatStructuredOutput_PreservesCredentialsAddedAfterObjectExtraction()
+    {
+        var user = new User { Name = "Alice", ObjectClass = "user" };
+        var computer = new Computer { Name = "DC", ObjectClass = "computer" };
+
+        user.PasswordHashes = new PasswordHashes { NtHash = "NT-HASH", LmHash = "LM-HASH" };
+        user.PasswordHistory = ["OLD-NT-HASH"];
+        user.LmPasswordHistory = ["OLD-LM-HASH"];
+        user.SupplementalCredentials = new SupplementalCredentials
+        {
+            ClearTextPassword = "password",
+            KerberosKeys = [new KerberosKey { Algorithm = "AES256", Key = "USER-KEY" }]
+        };
+        computer.PasswordHashes = new PasswordHashes { NtHash = "COMPUTER-HASH" };
+        computer.SupplementalCredentials = new SupplementalCredentials
+        {
+            KerberosKeys = [new KerberosKey { Algorithm = "AES128", Key = "COMPUTER-KEY" }]
+        };
+
+        var json = JsonOutputFormatter.FormatStructuredOutput([user], [], [computer]);
+
+        using var document = JsonDocument.Parse(json);
+        var serializedUser = document.RootElement.GetProperty("users")[0];
+        Assert.AreEqual("NT-HASH",
+            serializedUser.GetProperty("passwordHashes").GetProperty("ntHash").GetString());
+        Assert.AreEqual("LM-HASH",
+            serializedUser.GetProperty("passwordHashes").GetProperty("lmHash").GetString());
+        Assert.AreEqual("OLD-NT-HASH", serializedUser.GetProperty("passwordHistory")[0].GetString());
+        Assert.AreEqual("OLD-LM-HASH", serializedUser.GetProperty("lmPasswordHistory")[0].GetString());
+        Assert.AreEqual("password", serializedUser.GetProperty("supplementalCredentials")
+            .GetProperty("clearTextPassword").GetString());
+        Assert.AreEqual("USER-KEY", serializedUser.GetProperty("supplementalCredentials")
+            .GetProperty("kerberosKeys")[0].GetProperty("key").GetString());
+        Assert.IsFalse(serializedUser.TryGetProperty("PasswordHashes", out _));
+        Assert.IsFalse(serializedUser.TryGetProperty("SupplementalCredentials", out _));
+
+        var serializedComputer = document.RootElement.GetProperty("computers")[0];
+        Assert.AreEqual("COMPUTER-HASH",
+            serializedComputer.GetProperty("passwordHashes").GetProperty("ntHash").GetString());
+        Assert.AreEqual("COMPUTER-KEY", serializedComputer.GetProperty("supplementalCredentials")
+            .GetProperty("kerberosKeys")[0].GetProperty("key").GetString());
+    }
 }

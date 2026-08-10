@@ -75,6 +75,15 @@ namespace ditjson.Output
         WriteIndented = true,
         UseStringEnumConverter = true)]
     [JsonSerializable(typeof(StructuredOutput))]
+    // Keep credential nodes as explicit source-generation roots. Credential
+    // values are populated after initial extraction, and these registrations
+    // preserve their serialization contract in trimmed/single-file builds as
+    // the surrounding model graph evolves.
+    [JsonSerializable(typeof(User))]
+    [JsonSerializable(typeof(Computer))]
+    [JsonSerializable(typeof(PasswordHashes))]
+    [JsonSerializable(typeof(SupplementalCredentials))]
+    [JsonSerializable(typeof(KerberosKey))]
     internal partial class StructuredOutputJsonContext : JsonSerializerContext
     {
     }

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using CommandLine;
+using ditjson.Models;
 
 namespace ditjson.Tests;
 
@@ -165,5 +166,56 @@ public class ProgramTests
 
         using var document = JsonDocument.Parse(stdout.ToString());
         Assert.AreEqual(JsonValueKind.Array, document.RootElement.GetProperty("users").ValueKind);
+    }
+
+    [TestMethod]
+    public void ReportCredentialResults_ReportsRecoveredValuesAndExplainsPeks()
+    {
+        var stderr = new StringWriter();
+        var originalError = Console.Error;
+        try
+        {
+            Console.SetError(stderr);
+            Program.ReportCredentialResults(
+                [new User
+                {
+                    PasswordHashes = new PasswordHashes { NtHash = "hash" },
+                    PasswordHistory = ["old-hash"],
+                    SupplementalCredentials = new SupplementalCredentials
+                    {
+                        KerberosKeys = [new KerberosKey { Key = "key" }]
+                    }
+                }],
+                []);
+        }
+        finally
+        {
+            Console.SetError(originalError);
+        }
+
+        var output = stderr.ToString();
+        Assert.Contains("1 user hash set(s)", output);
+        Assert.Contains("1 history hash(es)", output);
+        Assert.Contains("1 Kerberos key(s)", output);
+        Assert.Contains("used internally and are not exported", output);
+        Assert.DoesNotContain("No account password hashes", output);
+    }
+
+    [TestMethod]
+    public void ReportCredentialResults_WithNoHashes_ReportsActionableWarning()
+    {
+        var stderr = new StringWriter();
+        var originalError = Console.Error;
+        try
+        {
+            Console.SetError(stderr);
+            Program.ReportCredentialResults([], []);
+        }
+        finally
+        {
+            Console.SetError(originalError);
+        }
+
+        Assert.Contains("verify that the NTDS.dit and SYSTEM hive are a matching pair", stderr.ToString());
     }
 }
