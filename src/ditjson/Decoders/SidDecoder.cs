@@ -79,7 +79,7 @@ namespace ditjson.Decoders
             try
             {
                 var bytes = HexToBytes(hexValue);
-                if (bytes != null && bytes.Length >= 12 && bytes[1] > 0 &&
+                if (bytes?.Length >= 12 && bytes[1] > 0 &&
                     bytes[2] == 0 && bytes[3] == 0 && bytes[4] == 0 &&
                     bytes[5] == 0 && bytes[6] == 0 && bytes[7] == 0)
                 {

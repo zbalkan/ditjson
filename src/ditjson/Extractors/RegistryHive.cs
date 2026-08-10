@@ -214,7 +214,7 @@ namespace ditjson.Extractors
                 return false;
             }
 
-            Span<byte> buffer = byteLength <= 256 ? stackalloc byte[byteLength] : new byte[byteLength];
+            var buffer = byteLength <= 256 ? stackalloc byte[byteLength] : new byte[byteLength];
             ReadExactly(offset, buffer);
             for (var i = 0; i < requestedName.Length; i++)
             {

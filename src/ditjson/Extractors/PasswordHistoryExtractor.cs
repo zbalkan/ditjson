@@ -61,7 +61,7 @@ namespace ditjson.Extractors
                 }
 
                 var rid = PasswordHashDecryptor.GetRid(user.ObjectSid);
-                if (ntHistoryData != null && ntHistoryData.Length > 0)
+                if (ntHistoryData?.Length > 0)
                 {
                     var hashes = ParsePasswordHistory(ntHistoryData, peks, rid);
                     if (hashes.Count > 0)
@@ -69,7 +69,7 @@ namespace ditjson.Extractors
                         user.PasswordHistory = hashes;
                     }
                 }
-                if (lmHistoryData != null && lmHistoryData.Length > 0)
+                if (lmHistoryData?.Length > 0)
                 {
                     var hashes = ParsePasswordHistory(lmHistoryData, peks, rid);
                     if (hashes.Count > 0)

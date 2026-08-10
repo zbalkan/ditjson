@@ -84,7 +84,7 @@ namespace ditjson.Filtering
             }
 
             user.UserAccountControl?.RemoveAll(string.IsNullOrWhiteSpace);
-            if (user.UserAccountControl != null && user.UserAccountControl.Count == 0)
+            if (user.UserAccountControl?.Count == 0)
             {
                 user.UserAccountControl = null;
             }

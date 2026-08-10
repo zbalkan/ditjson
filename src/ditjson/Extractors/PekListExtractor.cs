@@ -19,7 +19,7 @@ namespace ditjson.Extractors
             while (Api.TryMoveNext(session, table))
             {
                 var blob = ColumnExtractor.GetBinary(session, table, columns, NtdsColumnNames.PekList);
-                if (blob != null && blob.Length >= 24)
+                if (blob?.Length >= 24)
                 {
                     return CredentialCrypto.DecryptPekList(blob, bootkey);
                 }

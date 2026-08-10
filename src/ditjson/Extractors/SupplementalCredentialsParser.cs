@@ -82,7 +82,7 @@ namespace ditjson.Extractors
 
                 var (cleartext, kerberosKeys) = ParseSupplementalCredentialsBlob(CredentialCrypto.UnwrapAttribute(supCredData, peks));
 
-                if (!string.IsNullOrEmpty(cleartext) || (kerberosKeys != null && kerberosKeys.Count > 0))
+                if (!string.IsNullOrEmpty(cleartext) || (kerberosKeys?.Count > 0))
                 {
                     computer.SupplementalCredentials ??= new SupplementalCredentials();
 
@@ -91,7 +91,7 @@ namespace ditjson.Extractors
                         computer.SupplementalCredentials.ClearTextPassword = cleartext;
                     }
 
-                    if (kerberosKeys != null && kerberosKeys.Count > 0)
+                    if (kerberosKeys?.Count > 0)
                     {
                         computer.SupplementalCredentials.KerberosKeys = kerberosKeys;
                     }
@@ -117,7 +117,7 @@ namespace ditjson.Extractors
 
                 var (cleartext, kerberosKeys) = ParseSupplementalCredentialsBlob(CredentialCrypto.UnwrapAttribute(supCredData, peks));
 
-                if (!string.IsNullOrEmpty(cleartext) || (kerberosKeys != null && kerberosKeys.Count > 0))
+                if (!string.IsNullOrEmpty(cleartext) || (kerberosKeys?.Count > 0))
                 {
                     user.SupplementalCredentials ??= new SupplementalCredentials();
 
@@ -126,7 +126,7 @@ namespace ditjson.Extractors
                         user.SupplementalCredentials.ClearTextPassword = cleartext;
                     }
 
-                    if (kerberosKeys != null && kerberosKeys.Count > 0)
+                    if (kerberosKeys?.Count > 0)
                     {
                         user.SupplementalCredentials.KerberosKeys = kerberosKeys;
                     }

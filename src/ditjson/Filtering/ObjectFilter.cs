@@ -12,7 +12,7 @@ namespace ditjson.Filtering
                 return;
             }
 
-            if (!includeEmptyCollections && computer.MemberOf != null && computer.MemberOf.Count == 0)
+            if (!includeEmptyCollections && computer.MemberOf?.Count == 0)
             {
                 computer.MemberOf = null;
             }
@@ -43,12 +43,12 @@ namespace ditjson.Filtering
                 return;
             }
 
-            if (!includeEmptyCollections && group.Members != null && group.Members.Count == 0)
+            if (!includeEmptyCollections && group.Members?.Count == 0)
             {
                 group.Members = null;
             }
 
-            if (!includeEmptyCollections && group.MemberOf != null && group.MemberOf.Count == 0)
+            if (!includeEmptyCollections && group.MemberOf?.Count == 0)
             {
                 group.MemberOf = null;
             }
@@ -63,21 +63,21 @@ namespace ditjson.Filtering
 
             if (!includeEmptyCollections)
             {
-                if (user.MemberOf != null && user.MemberOf.Count == 0)
+                if (user.MemberOf?.Count == 0)
                 {
                     user.MemberOf = null;
                 }
 
-                if (user.Ancestors != null && user.Ancestors.Count == 0)
+                if (user.Ancestors?.Count == 0)
                 {
                     user.Ancestors = null;
                 }
 
-                if (user.PasswordHistory != null && user.PasswordHistory.Count == 0)
+                if (user.PasswordHistory?.Count == 0)
                 {
                     user.PasswordHistory = null;
                 }
-                if (user.LmPasswordHistory != null && user.LmPasswordHistory.Count == 0)
+                if (user.LmPasswordHistory?.Count == 0)
                 {
                     user.LmPasswordHistory = null;
                 }

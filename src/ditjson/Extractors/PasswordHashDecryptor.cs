@@ -78,26 +78,26 @@ namespace ditjson.Extractors
                 // Decrypt NT hash
                 var ntHashEncrypted = ColumnExtractor.GetBinary(
                     session, table, columnDict, NtdsColumnNames.NtHash);
-                if (ntHashEncrypted != null && ntHashEncrypted.Length >= 24)
+                if (ntHashEncrypted?.Length >= 24)
                 {
                     var ntHashDecrypted = DecryptHash(ntHashEncrypted, peks, GetRid(computer.ObjectSid));
-                    if (ntHashDecrypted != null && ntHashDecrypted.Length >= 16)
+                    if (ntHashDecrypted?.Length >= 16)
                     {
                         computer.PasswordHashes ??= new PasswordHashes();
-                        computer.PasswordHashes.NtHash = BitConverter.ToString(ntHashDecrypted, 0, 16).Replace("-", "").ToUpperInvariant();
+                        computer.PasswordHashes.NtHash = Convert.ToHexString(ntHashDecrypted, 0, 16).ToUpperInvariant();
                     }
                 }
 
                 // Decrypt LM hash
                 var lmHashEncrypted = ColumnExtractor.GetBinary(
                     session, table, columnDict, NtdsColumnNames.LmHash);
-                if (lmHashEncrypted != null && lmHashEncrypted.Length >= 24)
+                if (lmHashEncrypted?.Length >= 24)
                 {
                     var lmHashDecrypted = DecryptHash(lmHashEncrypted, peks, GetRid(computer.ObjectSid));
-                    if (lmHashDecrypted != null && lmHashDecrypted.Length >= 16)
+                    if (lmHashDecrypted?.Length >= 16)
                     {
                         computer.PasswordHashes ??= new PasswordHashes();
-                        computer.PasswordHashes.LmHash = BitConverter.ToString(lmHashDecrypted, 0, 16).Replace("-", "").ToUpperInvariant();
+                        computer.PasswordHashes.LmHash = Convert.ToHexString(lmHashDecrypted, 0, 16).ToUpperInvariant();
                     }
                 }
             }
@@ -115,26 +115,26 @@ namespace ditjson.Extractors
                 // Decrypt NT hash
                 var ntHashEncrypted = ColumnExtractor.GetBinary(
                     session, table, columnDict, NtdsColumnNames.NtHash);
-                if (ntHashEncrypted != null && ntHashEncrypted.Length >= 24)
+                if (ntHashEncrypted?.Length >= 24)
                 {
                     var ntHashDecrypted = DecryptHash(ntHashEncrypted, peks, GetRid(user.ObjectSid));
-                    if (ntHashDecrypted != null && ntHashDecrypted.Length >= 16)
+                    if (ntHashDecrypted?.Length >= 16)
                     {
                         user.PasswordHashes ??= new PasswordHashes();
-                        user.PasswordHashes.NtHash = BitConverter.ToString(ntHashDecrypted, 0, 16).Replace("-", "").ToUpperInvariant();
+                        user.PasswordHashes.NtHash = Convert.ToHexString(ntHashDecrypted, 0, 16).ToUpperInvariant();
                     }
                 }
 
                 // Decrypt LM hash
                 var lmHashEncrypted = ColumnExtractor.GetBinary(
                     session, table, columnDict, NtdsColumnNames.LmHash);
-                if (lmHashEncrypted != null && lmHashEncrypted.Length >= 24)
+                if (lmHashEncrypted?.Length >= 24)
                 {
                     var lmHashDecrypted = DecryptHash(lmHashEncrypted, peks, GetRid(user.ObjectSid));
-                    if (lmHashDecrypted != null && lmHashDecrypted.Length >= 16)
+                    if (lmHashDecrypted?.Length >= 16)
                     {
                         user.PasswordHashes ??= new PasswordHashes();
-                        user.PasswordHashes.LmHash = BitConverter.ToString(lmHashDecrypted, 0, 16).Replace("-", "").ToUpperInvariant();
+                        user.PasswordHashes.LmHash = Convert.ToHexString(lmHashDecrypted, 0, 16).ToUpperInvariant();
                     }
                 }
             }
