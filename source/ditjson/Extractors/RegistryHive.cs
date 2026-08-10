@@ -1,4 +1,5 @@
 using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -9,33 +10,34 @@ namespace ditjson.Extractors
     internal sealed class RegistryHive : IDisposable
     {
         private const int HbinBase = 0x1000;
+        private const uint Regf = (uint)('r' | ('e' << 8) | ('g' << 16) | ('f' << 24));
+        private const ushort Nk = (ushort)('n' | ('k' << 8));
+        private const ushort Vk = (ushort)('v' | ('k' << 8));
+        private const ushort Li = (ushort)('l' | ('i' << 8));
+        private const ushort Lf = (ushort)('l' | ('f' << 8));
+        private const ushort Lh = (ushort)('l' | ('h' << 8));
+        private const ushort Ri = (ushort)('r' | ('i' << 8));
+
         private readonly FileStream stream;
-        private readonly BinaryReader reader;
 
         internal RegistryHive(string path)
         {
             stream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-            reader = new BinaryReader(stream, Encoding.Unicode, leaveOpen: true);
-            if (ReadAscii(0, 4) != "regf")
+            if (ReadUInt32(0) != Regf)
             {
+                stream.Dispose();
                 throw new InvalidDataException("Not a registry hive");
             }
         }
 
         internal int RootCell => ReadInt32(0x24);
-        internal static readonly char[] separator = new[] { '\\' };
 
         internal int OpenKey(string path)
         {
             var cell = RootCell;
-            foreach (var part in path.Split(separator, StringSplitOptions.RemoveEmptyEntries))
+            foreach (var part in path.Split('\\', StringSplitOptions.RemoveEmptyEntries))
             {
-                var found = -1;
-                foreach (var child in EnumerateSubkeys(cell))
-                {
-                    if (string.Equals(ReadKeyName(child), part, StringComparison.OrdinalIgnoreCase)) { found = child; break; }
-                }
-
+                var found = FindSubkey(cell, part);
                 if (found < 0)
                 {
                     throw new KeyNotFoundException($"Registry key not found: {path}");
@@ -43,20 +45,24 @@ namespace ditjson.Extractors
 
                 cell = found;
             }
+
             return cell;
         }
 
         internal string ReadClassName(int keyCell)
         {
-            RequireSignature(keyCell, "nk");
-            var offset = ReadInt32(Absolute(keyCell) + 0x30);
-            var length = ReadUInt16(Absolute(keyCell) + 0x4a);
-            return length == 0 || offset < 0 ? string.Empty : Encoding.Unicode.GetString(ReadBytes(Absolute(offset) + 4, length)).TrimEnd('\0');
+            RequireSignature(keyCell, Nk, "nk");
+            var at = Absolute(keyCell);
+            var offset = ReadInt32(at + 0x30);
+            var length = ReadUInt16(at + 0x4a);
+            return length == 0 || offset < 0
+                ? string.Empty
+                : Encoding.Unicode.GetString(ReadBytes(Absolute(offset) + 4, length)).TrimEnd('\0');
         }
 
         internal byte[]? ReadValue(int keyCell, string name)
         {
-            RequireSignature(keyCell, "nk");
+            RequireSignature(keyCell, Nk, "nk");
             var count = ReadInt32(Absolute(keyCell) + 0x24);
             var list = ReadInt32(Absolute(keyCell) + 0x28);
             if (count <= 0 || list < 0)
@@ -67,11 +73,13 @@ namespace ditjson.Extractors
             for (var i = 0; i < count; i++)
             {
                 var valueCell = ReadInt32(Absolute(list) + 4 + i * 4);
-                RequireSignature(valueCell, "vk");
+                RequireSignature(valueCell, Vk, "vk");
                 var at = Absolute(valueCell);
                 var nameLength = ReadUInt16(at + 2);
                 var ascii = (ReadUInt16(at + 0x10) & 1) != 0;
-                var valueName = nameLength == 0 ? string.Empty : (ascii ? Encoding.ASCII : Encoding.Unicode).GetString(ReadBytes(at + 0x14, nameLength));
+                var valueName = nameLength == 0
+                    ? string.Empty
+                    : (ascii ? Encoding.ASCII : Encoding.Unicode).GetString(ReadBytes(at + 0x14, nameLength));
                 if (!string.Equals(valueName, name, StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
@@ -80,69 +88,142 @@ namespace ditjson.Extractors
                 var rawLength = ReadUInt32(at + 4);
                 var length = (int)(rawLength & 0x7fffffff);
                 var dataOffset = at + 8;
-                return (rawLength & 0x80000000) != 0 ? ReadBytes(dataOffset, Math.Min(length, 4)) : ReadBytes(Absolute(ReadInt32(dataOffset)) + 4, length);
+                return (rawLength & 0x80000000) != 0
+                    ? ReadBytes(dataOffset, Math.Min(length, 4))
+                    : ReadBytes(Absolute(ReadInt32(dataOffset)) + 4, length);
             }
+
             return null;
         }
 
-        private IEnumerable<int> EnumerateSubkeys(int keyCell)
+        private int FindSubkey(int keyCell, string name)
         {
-            RequireSignature(keyCell, "nk");
+            RequireSignature(keyCell, Nk, "nk");
             var count = ReadInt32(Absolute(keyCell) + 0x14);
             var list = ReadInt32(Absolute(keyCell) + 0x1c);
-            if (count <= 0 || list < 0)
-            {
-                yield break;
-            }
-
-            foreach (var cell in ReadSubkeyList(list))
-            {
-                yield return cell;
-            }
+            return count <= 0 || list < 0 ? -1 : FindInSubkeyList(list, name);
         }
 
-        private IEnumerable<int> ReadSubkeyList(int listCell)
+        private int FindInSubkeyList(int listCell, string name)
         {
             var at = Absolute(listCell);
-            var sig = ReadAscii(at + 4, 2);
+            var signature = ReadUInt16(at + 4);
             var count = ReadUInt16(at + 6);
-            if (sig == "ri")
+            if (signature == Ri)
             {
                 for (var i = 0; i < count; i++)
                 {
-                    foreach (var child in ReadSubkeyList(ReadInt32(at + 8 + i * 4)))
+                    var found = FindInSubkeyList(ReadInt32(at + 8 + i * 4), name);
+                    if (found >= 0)
                     {
-                        yield return child;
+                        return found;
                     }
                 }
 
-                yield break;
+                return -1;
             }
-            var stride = sig == "li" ? 4 : sig is "lf" or "lh" ? 8 : throw new InvalidDataException($"Unknown subkey list {sig}");
+
+            var stride = signature switch {
+                Li => 4,
+                Lf or Lh => 8,
+                _ => throw new InvalidDataException($"Unknown subkey list 0x{signature:x4}")
+            };
+
             for (var i = 0; i < count; i++)
             {
-                yield return ReadInt32(at + 8 + i * stride);
+                var child = ReadInt32(at + 8 + i * stride);
+                if (KeyNameEquals(child, name))
+                {
+                    return child;
+                }
             }
+
+            return -1;
         }
 
-        private string ReadKeyName(int cell)
+        private bool KeyNameEquals(int cell, string requestedName)
         {
-            RequireSignature(cell, "nk");
-            var at = Absolute(cell); var length = ReadUInt16(at + 0x48); var ascii = (ReadUInt16(at + 6) & 0x20) != 0;
-            return (ascii ? Encoding.ASCII : Encoding.Unicode).GetString(ReadBytes(at + 0x4c, length));
+            RequireSignature(cell, Nk, "nk");
+            var at = Absolute(cell);
+            var length = ReadUInt16(at + 0x48);
+            var ascii = (ReadUInt16(at + 6) & 0x20) != 0;
+            if ((ascii && length != requestedName.Length) || (!ascii && length != requestedName.Length * 2))
+            {
+                return false;
+            }
+
+            Span<byte> buffer = length <= 256 ? stackalloc byte[length] : new byte[length];
+            ReadExactly(at + 0x4c, buffer);
+            for (var i = 0; i < requestedName.Length; i++)
+            {
+                var hiveCharacter = ascii ? (char)buffer[i] : (char)BinaryPrimitives.ReadUInt16LittleEndian(buffer.Slice(i * 2, 2));
+                if (!CharactersEqualIgnoreCase(hiveCharacter, requestedName[i]))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
-        private void RequireSignature(int cell, string expected) { if (cell < 0 || ReadAscii(Absolute(cell) + 4, 2) != expected)
+        private static bool CharactersEqualIgnoreCase(char left, char right)
+        {
+            return left == right || char.ToUpperInvariant(left) == char.ToUpperInvariant(right);
+        }
+
+        private void RequireSignature(int cell, ushort expected, string name)
+        {
+            if (cell < 0 || ReadUInt16(Absolute(cell) + 4) != expected)
             {
-                throw new InvalidDataException($"Invalid {expected} cell");
+                throw new InvalidDataException($"Invalid {name} cell");
             }
         }
+
         private static long Absolute(int relative) => HbinBase + (long)relative;
-        private byte[] ReadBytes(long at, int count) { stream.Position = at; var result = reader.ReadBytes(count); if (result.Length != count) { throw new EndOfStreamException(); } return result; }
-        private string ReadAscii(long at, int count) => Encoding.ASCII.GetString(ReadBytes(at, count));
-        private ushort ReadUInt16(long at) { stream.Position = at; return reader.ReadUInt16(); }
-        private uint ReadUInt32(long at) { stream.Position = at; return reader.ReadUInt32(); }
-        private int ReadInt32(long at) { stream.Position = at; return reader.ReadInt32(); }
-        public void Dispose() { reader.Dispose(); stream.Dispose(); }
+
+        private byte[] ReadBytes(long offset, int count)
+        {
+            var result = new byte[count];
+            ReadExactly(offset, result);
+            return result;
+        }
+
+        private void ReadExactly(long offset, Span<byte> destination)
+        {
+            stream.Position = offset;
+            while (!destination.IsEmpty)
+            {
+                var read = stream.Read(destination);
+                if (read == 0)
+                {
+                    throw new EndOfStreamException();
+                }
+
+                destination = destination.Slice(read);
+            }
+        }
+
+        private ushort ReadUInt16(long offset)
+        {
+            Span<byte> buffer = stackalloc byte[sizeof(ushort)];
+            ReadExactly(offset, buffer);
+            return BinaryPrimitives.ReadUInt16LittleEndian(buffer);
+        }
+
+        private uint ReadUInt32(long offset)
+        {
+            Span<byte> buffer = stackalloc byte[sizeof(uint)];
+            ReadExactly(offset, buffer);
+            return BinaryPrimitives.ReadUInt32LittleEndian(buffer);
+        }
+
+        private int ReadInt32(long offset)
+        {
+            Span<byte> buffer = stackalloc byte[sizeof(int)];
+            ReadExactly(offset, buffer);
+            return BinaryPrimitives.ReadInt32LittleEndian(buffer);
+        }
+
+        public void Dispose() => stream.Dispose();
     }
 }
