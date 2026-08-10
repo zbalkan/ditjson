@@ -18,8 +18,10 @@ metadata of the `JD`, `Skew1`, `GBG`, and `Data` keys, not in registry values.
 3. In an elevated prompt, create an IFM snapshot with `ntdsutil` (`activate
    instance ntds`, `ifm`, `create full <path>`). Copy the resulting `ntds.dit`
    and `SYSTEM` files to a local, access-controlled test directory.
-4. Run ditjson against that pair. Do **not** add the files or extracted output to
-   Git; both contain reusable credential material.
+4. Run ditjson against that pair, passing the database and matching hive as the
+   two positional arguments (for example, `ditjson /fixture/ntds.dit
+   /fixture/SYSTEM --output /fixture/domain.json`). Do **not** add the files or
+   extracted output to Git; both contain reusable credential material.
 5. In an isolated Python environment, install Impacket and run:
 
    ```text

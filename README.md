@@ -53,19 +53,26 @@ dotnet publish src/ditjson/ditjson.csproj --configuration Release --runtime win-
 ## Usage
 
 ```text
-ditjson <ntds.dit> [SYSTEM] [options]
-
-Arguments:
-  ntds.dit              Path to the NTDS.dit database
-  SYSTEM                Optional matching SYSTEM registry hive
+Usage: ditjson [options] <ntds.dit> [SYSTEM]
 
 Options:
   -o, --output <file>   Write JSON to a file instead of stdout
   -t, --timeline        Write a chronological JSON timeline instead of
                         structured objects
-  -h, --help            Show help
-  -v, --version         Show version
+  -h, --help            Show help and exit
+  -v, --version         Show version and exit
 ```
+
+`<ntds.dit>` is the required path to the offline directory database. The
+optional second positional argument, `[SYSTEM]`, is the path to its matching
+SYSTEM registry hive. Options may appear before, between, or after the
+positional arguments. Option names are case-insensitive, and the output option
+also accepts `--output=<file>` and `-o=<file>`.
+
+Help, version information, diagnostics, and progress are written to stderr so
+that stdout remains reserved for JSON. Run `ditjson --help` to display the
+command-line reference, or `ditjson --version` to display the installed
+version.
 
 Extract directory information without decrypting credentials:
 
@@ -77,6 +84,12 @@ Supply the matching hive to enable credential extraction:
 
 ```powershell
 ditjson C:\evidence\ntds.dit C:\evidence\SYSTEM -o domain.json
+```
+
+Options can also precede the input paths:
+
+```powershell
+ditjson --output=domain.json C:\evidence\ntds.dit C:\evidence\SYSTEM
 ```
 
 Write JSON to standard output for use in a pipeline:
