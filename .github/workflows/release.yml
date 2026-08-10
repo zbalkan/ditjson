@@ -38,6 +38,12 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      - name: Install Linux AOT dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install clang zlib1g-dev
+
       - name: Resolve release version
         id: version
         shell: bash
