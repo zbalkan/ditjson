@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ditjson.Models;
@@ -34,6 +35,46 @@ namespace ditjson.Output
             };
 
             return JsonSerializer.Serialize(output, JsonContext.StructuredOutput);
+        }
+
+        public static string FormatTimeline(List<User> users, List<Group> groups,
+            List<Computer> computers)
+        {
+            var events = new List<TimelineEvent>();
+
+            foreach (var item in users.Cast<NtdsObject>().Concat(groups).Concat(computers))
+            {
+                AddEvent(events, item.WhenCreated, "Created", item);
+                AddEvent(events, item.WhenChanged, "Modified", item);
+            }
+
+            foreach (var user in users)
+            {
+                AddEvent(events, user.LastLogon, "Logged in", user);
+                AddEvent(events, user.LastLogonTimeStamp, "Login timestamp sync", user);
+                AddEvent(events, user.PasswordLastSet, "Password changed", user);
+            }
+
+            events.Sort((left, right) => StringComparer.Ordinal.Compare(left.Timestamp, right.Timestamp));
+            return JsonSerializer.Serialize(events, JsonContext.ListTimelineEvent);
+        }
+
+        private static void AddEvent(List<TimelineEvent> events, string? timestamp, string action,
+            NtdsObject item)
+        {
+            if (string.IsNullOrWhiteSpace(timestamp))
+            {
+                return;
+            }
+
+            events.Add(new TimelineEvent
+            {
+                Timestamp = timestamp,
+                Event = action,
+                RecordId = item.RecordId,
+                ObjectName = item.Name,
+                ObjectType = item.ObjectClass
+            });
         }
     }
 
@@ -70,6 +111,24 @@ namespace ditjson.Output
         public List<User> Users { get; set; } = new();
     }
 
+    internal sealed class TimelineEvent
+    {
+        [JsonPropertyName("timestamp")]
+        public string Timestamp { get; set; } = string.Empty;
+
+        [JsonPropertyName("event")]
+        public string Event { get; set; } = string.Empty;
+
+        [JsonPropertyName("recordId")]
+        public int RecordId { get; set; }
+
+        [JsonPropertyName("objectName")]
+        public string? ObjectName { get; set; }
+
+        [JsonPropertyName("objectType")]
+        public string? ObjectType { get; set; }
+    }
+
     [JsonSourceGenerationOptions(
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         WriteIndented = true,
@@ -84,6 +143,7 @@ namespace ditjson.Output
     [JsonSerializable(typeof(PasswordHashes))]
     [JsonSerializable(typeof(SupplementalCredentials))]
     [JsonSerializable(typeof(KerberosKey))]
+    [JsonSerializable(typeof(List<TimelineEvent>))]
     internal partial class StructuredOutputJsonContext : JsonSerializerContext
     {
     }

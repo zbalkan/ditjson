@@ -125,7 +125,9 @@ namespace ditjson
                 }
             }
 
-            return JsonOutputFormatter.FormatStructuredOutput(users, groups, computers);
+            return opts.Timeline
+                ? JsonOutputFormatter.FormatTimeline(users, groups, computers)
+                : JsonOutputFormatter.FormatStructuredOutput(users, groups, computers);
         }
 
         internal static void ReportCredentialResults(List<Models.User> users,

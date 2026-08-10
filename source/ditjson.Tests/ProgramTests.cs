@@ -100,6 +100,20 @@ public class ProgramTests
         Assert.AreEqual("ntds.dit", parsed.Ntds);
         Assert.IsNull(parsed.System);
         Assert.IsNull(parsed.Output);
+        Assert.IsFalse(parsed.Timeline);
+    }
+
+    [TestMethod]
+    public void Parser_AcceptsTimelineFlag()
+    {
+        Options? parsed = null;
+
+        new Parser(settings => settings.HelpWriter = TextWriter.Null)
+            .ParseArguments<Options>(["ntds.dit", "--timeline"])
+            .WithParsed(options => parsed = options);
+
+        Assert.IsNotNull(parsed);
+        Assert.IsTrue(parsed.Timeline);
     }
 
     [TestMethod]

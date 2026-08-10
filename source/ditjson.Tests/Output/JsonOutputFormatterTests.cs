@@ -8,6 +8,34 @@ namespace ditjson.Tests.Output;
 public class JsonOutputFormatterTests
 {
     [TestMethod]
+    public void FormatTimeline_EmitsChronologicalJsonEvents()
+    {
+        var user = new User
+        {
+            RecordId = 42,
+            Name = "Alice",
+            ObjectClass = "user",
+            WhenCreated = "2024-01-01T00:00:00.0000000Z",
+            WhenChanged = "2024-03-01T00:00:00.0000000Z",
+            LastLogon = "2024-02-01T00:00:00.0000000Z",
+            PasswordLastSet = "2024-02-15T00:00:00.0000000Z"
+        };
+
+        var json = JsonOutputFormatter.FormatTimeline([user], [], []);
+
+        using var document = JsonDocument.Parse(json);
+        var events = document.RootElement;
+        Assert.AreEqual(4, events.GetArrayLength());
+        Assert.AreEqual("Created", events[0].GetProperty("event").GetString());
+        Assert.AreEqual("Logged in", events[1].GetProperty("event").GetString());
+        Assert.AreEqual("Password changed", events[2].GetProperty("event").GetString());
+        Assert.AreEqual("Modified", events[3].GetProperty("event").GetString());
+        Assert.AreEqual(42, events[0].GetProperty("recordId").GetInt32());
+        Assert.AreEqual("Alice", events[0].GetProperty("objectName").GetString());
+        Assert.AreEqual("user", events[0].GetProperty("objectType").GetString());
+    }
+
+    [TestMethod]
     public void FormatStructuredOutput_UsesExpectedSchemaAndCounts()
     {
         var users = new List<User>
