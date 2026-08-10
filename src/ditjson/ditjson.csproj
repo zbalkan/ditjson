@@ -1,26 +1,30 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net10.0</TargetFramework>
-    <ImplicitUsings>disable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <AssemblyTitle>ditjson</AssemblyTitle>
-    <Company>Info-Assure, Zafer Balkan</Company>
-    <Product>ditjson</Product>
-    <Copyright>Copyright © Info-Assure 2015, © Zafer Balkan 2026</Copyright>
-    <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
-  </PropertyGroup>
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Database.ManagedEsent" Version="3.2.0" />
-    <InternalsVisibleTo Include="ditjson.Tests" />
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Properties\" />
-  </ItemGroup>
-  <PropertyGroup>
-    <PublishSingleFile>true</PublishSingleFile>
-    <PublishReadyToRun>true</PublishReadyToRun>
-    <!-- ManagedEsent is not trim-compatible. Publishing the complete application is required to preserve its reflection-based code. -->
-    <PublishTrimmed>false</PublishTrimmed>
-  </PropertyGroup>
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>disable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <AssemblyTitle>ditjson</AssemblyTitle>
+        <Company>Info-Assure, Zafer Balkan</Company>
+        <Product>ditjson</Product>
+        <Copyright>Copyright © Info-Assure 2015, © Zafer Balkan 2026</Copyright>
+        <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Database.ManagedEsent" Version="3.2.0" />
+        <InternalsVisibleTo Include="ditjson.Tests" />
+    </ItemGroup>
+    <ItemGroup>
+        <Folder Include="Properties\" />
+    </ItemGroup>
+    <PropertyGroup>
+        <IsAotCompatible>true</IsAotCompatible>
+        <VerifyReferenceAotCompatibility>true</VerifyReferenceAotCompatibility>
+    </PropertyGroup>
+    <PropertyGroup>
+        <PublishSingleFile>true</PublishSingleFile>
+        <PublishReadyToRun>true</PublishReadyToRun>
+        <!-- ManagedEsent is not trim-compatible. Publishing the complete application is required to preserve its reflection-based code. -->
+        <PublishTrimmed>false</PublishTrimmed>
+    </PropertyGroup>
 </Project>
