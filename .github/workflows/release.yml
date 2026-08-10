@@ -33,22 +33,22 @@ jobs:
         dotnet-version: '8.0.x'
 
     - name: Restore dependencies
-      run: dotnet restore source/ditjson.sln
+      run: dotnet restore src/ditjson.slnx
 
     - name: Build
-      run: dotnet build source/ditjson.sln --no-restore --configuration Release
+      run: dotnet build src/ditjson.slnx --no-restore --configuration Release
 
     - name: Run unit tests
-      run: dotnet test source/ditjson.Tests/ditjson.Tests.csproj --no-build --verbosity normal --configuration Release
+      run: dotnet test src/ditjson.Tests/ditjson.Tests.csproj --no-build --verbosity normal --configuration Release
 
     - name: Publish
-      run: dotnet publish source/ditjson/ditjson.csproj --no-build --configuration Release --runtime ${{ matrix.rid }} --self-contained
+      run: dotnet publish src/ditjson/ditjson.csproj --no-build --configuration Release --runtime ${{ matrix.rid }} --self-contained
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.artifact }}
-        path: source/ditjson/bin/Release/net8.0/${{ matrix.rid }}/publish/
+        path: src/ditjson/bin/Release/net8.0/${{ matrix.rid }}/publish/
 
   create-release:
     needs: build-and-release
