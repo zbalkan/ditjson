@@ -19,7 +19,9 @@ namespace ditjson.Extractors
         private static void DecryptComputerHashes(Session session, JET_DBID dbid, List<Computer> computers, IReadOnlyList<byte[]> peks)
         {
             if (computers == null || computers.Count == 0)
+            {
                 return;
+            }
 
             try
             {
@@ -51,9 +53,17 @@ namespace ditjson.Extractors
 
         internal static uint GetRid(string? sid)
         {
-            if (string.IsNullOrWhiteSpace(sid)) throw new InvalidOperationException("Credential-bearing object has no SID");
+            if (string.IsNullOrWhiteSpace(sid))
+            {
+                throw new InvalidOperationException("Credential-bearing object has no SID");
+            }
+
             var separator = sid.LastIndexOf('-');
-            if (separator < 0 || !uint.TryParse(sid.Substring(separator + 1), out var rid)) throw new InvalidOperationException($"Invalid SID: {sid}");
+            if (separator < 0 || !uint.TryParse(sid.AsSpan(separator + 1), out var rid))
+            {
+                throw new InvalidOperationException($"Invalid SID: {sid}");
+            }
+
             return rid;
         }
 
@@ -137,7 +147,9 @@ namespace ditjson.Extractors
         private static void DecryptUserHashes(Session session, JET_DBID dbid, List<User> users, IReadOnlyList<byte[]> peks)
         {
             if (users == null || users.Count == 0)
+            {
                 return;
+            }
 
             try
             {

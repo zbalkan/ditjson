@@ -11,10 +11,12 @@ namespace ditjson.Extractors
         {
             try
             {
-                if (!columnDict.ContainsKey(fieldName))
+                if (!columnDict.TryGetValue(fieldName, out var columndId))
+                {
                     return null;
+                }
 
-                return Api.RetrieveColumn(session, table, columnDict[fieldName]);
+                return Api.RetrieveColumn(session, table, columndId);
             }
             catch
             {
@@ -27,10 +29,12 @@ namespace ditjson.Extractors
         {
             try
             {
-                if (!columnDict.ContainsKey(fieldName))
+                if (!columnDict.TryGetValue(fieldName, out var columndId))
+                {
                     return 0;
+                }
 
-                var value = Api.RetrieveColumnAsInt32(session, table, columnDict[fieldName]);
+                var value = Api.RetrieveColumnAsInt32(session, table, columndId);
                 return value ?? 0;
             }
             catch
@@ -44,10 +48,12 @@ namespace ditjson.Extractors
         {
             try
             {
-                if (!columnDict.ContainsKey(fieldName))
+                if (!columnDict.TryGetValue(fieldName, out var columndId))
+                {
                     return 0;
+                }
 
-                var value = Api.RetrieveColumnAsInt64(session, table, columnDict[fieldName]);
+                var value = Api.RetrieveColumnAsInt64(session, table, columndId);
                 return value ?? 0;
             }
             catch
@@ -67,10 +73,12 @@ namespace ditjson.Extractors
         {
             try
             {
-                if (!columnDict.ContainsKey(fieldName))
+                if (!columnDict.TryGetValue(fieldName, out var columndId))
+                {
                     return null;
+                }
 
-                var value = Api.RetrieveColumnAsString(session, table, columnDict[fieldName],
+                var value = Api.RetrieveColumnAsString(session, table, columndId,
                     Encoding.Unicode);
                 return string.IsNullOrEmpty(value) ? null : value;
             }

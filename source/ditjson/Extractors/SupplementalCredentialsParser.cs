@@ -29,7 +29,9 @@ namespace ditjson.Extractors
         private static void ParseComputerCredentials(Session session, JET_DBID dbid, List<Computer> computers, IReadOnlyList<byte[]> peks)
         {
             if (computers == null || computers.Count == 0)
+            {
                 return;
+            }
 
             try
             {
@@ -67,7 +69,9 @@ namespace ditjson.Extractors
                 var supCredData = ColumnExtractor.GetBinary(
                     session, table, columnDict, NtdsColumnNames.SupplementalCredentials);
                 if (supCredData == null || supCredData.Length == 0)
+                {
                     return;
+                }
 
                 var (cleartext, kerberosKeys) = ParseSupplementalCredentialsBlob(CredentialCrypto.UnwrapAttribute(supCredData, peks));
 
@@ -76,10 +80,14 @@ namespace ditjson.Extractors
                     computer.SupplementalCredentials ??= new SupplementalCredentials();
 
                     if (!string.IsNullOrEmpty(cleartext))
+                    {
                         computer.SupplementalCredentials.ClearTextPassword = cleartext;
+                    }
 
                     if (kerberosKeys != null && kerberosKeys.Count > 0)
+                    {
                         computer.SupplementalCredentials.KerberosKeys = kerberosKeys;
+                    }
                 }
             }
             catch (Exception ex)
@@ -96,7 +104,9 @@ namespace ditjson.Extractors
                 var supCredData = ColumnExtractor.GetBinary(
                     session, table, columnDict, NtdsColumnNames.SupplementalCredentials);
                 if (supCredData == null || supCredData.Length == 0)
+                {
                     return;
+                }
 
                 var (cleartext, kerberosKeys) = ParseSupplementalCredentialsBlob(CredentialCrypto.UnwrapAttribute(supCredData, peks));
 
@@ -105,10 +115,14 @@ namespace ditjson.Extractors
                     user.SupplementalCredentials ??= new SupplementalCredentials();
 
                     if (!string.IsNullOrEmpty(cleartext))
+                    {
                         user.SupplementalCredentials.ClearTextPassword = cleartext;
+                    }
 
                     if (kerberosKeys != null && kerberosKeys.Count > 0)
+                    {
                         user.SupplementalCredentials.KerberosKeys = kerberosKeys;
+                    }
                 }
             }
             catch (Exception ex)
@@ -122,7 +136,11 @@ namespace ditjson.Extractors
             var keys = new List<KerberosKey>();
             try
             {
-                if (data.Length < 24) return keys;
+                if (data.Length < 24)
+                {
+                    return keys;
+                }
+
                 var keyCount = BitConverter.ToUInt16(data, 4);
                 var offset = 24;
                 for (var i = 0; i < keyCount && offset + 24 <= data.Length; i++)
@@ -149,7 +167,11 @@ namespace ditjson.Extractors
             var keys = new List<KerberosKey>();
             try
             {
-                if (data.Length < 16) return (null, null);
+                if (data.Length < 16)
+                {
+                    return (null, null);
+                }
+
                 var propertyCount = BitConverter.ToUInt16(data, 14);
                 var offset = 16;
                 for (var property = 0; property < propertyCount && offset + 6 <= data.Length; property++)
@@ -157,7 +179,11 @@ namespace ditjson.Extractors
                     var nameLength = BitConverter.ToUInt16(data, offset);
                     var valueLength = BitConverter.ToUInt16(data, offset + 2);
                     offset += 6;
-                    if (offset + nameLength + valueLength > data.Length) break;
+                    if (offset + nameLength + valueLength > data.Length)
+                    {
+                        break;
+                    }
+
                     var name = Encoding.Unicode.GetString(data, offset, nameLength).TrimEnd('\0');
                     offset += nameLength;
                     var encodedValue = Encoding.ASCII.GetString(data, offset, valueLength);
@@ -169,7 +195,10 @@ namespace ditjson.Extractors
                         try { cleartext = new UnicodeEncoding(false, false, true).GetString(value).TrimEnd('\0'); }
                         catch (DecoderFallbackException) { cleartext = Convert.ToHexString(value); }
                     }
-                    else if (name == "Primary:Kerberos-Newer-Keys") keys.AddRange(ParseKerberosKeysFromBlob(value));
+                    else if (name == "Primary:Kerberos-Newer-Keys")
+                    {
+                        keys.AddRange(ParseKerberosKeysFromBlob(value));
+                    }
                 }
                 return (cleartext, keys.Count > 0 ? keys : null);
             }
@@ -179,7 +208,9 @@ namespace ditjson.Extractors
         private static void ParseUserCredentials(Session session, JET_DBID dbid, List<User> users, IReadOnlyList<byte[]> peks)
         {
             if (users == null || users.Count == 0)
+            {
                 return;
+            }
 
             try
             {

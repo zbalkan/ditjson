@@ -28,6 +28,6 @@ public class JsonOutputFormatterTests
         Assert.AreEqual(0, root.GetProperty("metadata").GetProperty("totalComputers").GetInt32());
         Assert.AreEqual("<Alice>", root.GetProperty("users")[0].GetProperty("Name").GetString());
         Assert.IsFalse(root.GetProperty("users")[0].TryGetProperty("SamAccountName", out _));
-        StringAssert.Contains(json, "<Alice>");
+        Assert.Contains("<Alice>", json);
     }
 }

@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace ditjson.Querying
 {
@@ -13,6 +14,12 @@ namespace ditjson.Querying
     /// </summary>
     internal static class CrownJewelsFilterMinimized
     {
+        private static readonly JsonSerializerOptions OutputJsonOptions = new()
+        {
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+            WriteIndented = true
+        };
+
         [RequiresUnreferencedCode("Calls ditjson.Querying.CrownJewelsFilterMinimized.Out(JsonElement, String, Int32)")]
         public static string ApplyCrownJewels(string jsonData)
         {
@@ -44,27 +51,53 @@ namespace ditjson.Querying
 
                 // Process users
                 foreach (var u in users.EnumerateArray())
+                {
                     foreach (var q in qs.Take(9))
+                    {
+                        if (q is null || q.P is null || q.F is null)
+                        {
+                            continue;
+                        }
+
                         if (q.P(u))
                         {
-                            if (tot++ > 0) res.Append(',');
+                            if (tot++ > 0)
+                            {
+                                res.Append(',');
+                            }
+
                             res.Append(Proj(u, q.F));
                             q.C++;
                         }
+                    }
+                }
 
                 // Process computers
                 foreach (var c in comps.EnumerateArray())
+                {
+                    if (qs[9] is null || qs[9].P is null || qs[9].F is null)
+                    {
+                        continue;
+                    }
+
                     if (qs[9].P(c))
                     {
-                        if (tot++ > 0) res.Append(',');
+                        if (tot++ > 0)
+                        {
+                            res.Append(',');
+                        }
+
                         res.Append(Proj(c, qs[9].F));
                         qs[9].C++;
                     }
+                }
 
                 res.Append(']');
 
                 foreach (var q in qs.Where(x => x.C > 0))
+                {
                     Console.Error.WriteLine($"[*] {q.N}: {q.C} results");
+                }
 
                 return Out(meta, res.ToString(), tot);
             }
@@ -105,7 +138,10 @@ namespace ditjson.Querying
         private static bool IsRecent(JsonElement u)
         {
             if (!u.TryGetProperty("lastLogon", out var l) || l.ValueKind != JsonValueKind.String)
+            {
                 return false;
+            }
+
             var limit = DateTime.UtcNow.AddDays(-30).ToString("O");
             return (l.GetString()?.CompareTo(limit) ?? -1) > 0 && HasPasswordHash(u);
         }
@@ -113,7 +149,10 @@ namespace ditjson.Querying
         private static bool IsService(JsonElement u)
         {
             if (!HasFlag(u, "DONT_EXPIRE_PASSWORD") || !u.TryGetProperty("samAccountName", out var s))
+            {
                 return false;
+            }
+
             var n = s.GetString() ?? "";
             return n.Contains("svc", StringComparison.OrdinalIgnoreCase) ||
                    n.Contains("service", StringComparison.OrdinalIgnoreCase) ||
@@ -123,7 +162,10 @@ namespace ditjson.Querying
         private static bool IsStaleComputer(JsonElement c)
         {
             if (!c.TryGetProperty("passwordLastSet", out var p) || p.ValueKind != JsonValueKind.String)
+            {
                 return false;
+            }
+
             var limit = DateTime.UtcNow.AddDays(-90).ToString("O");
             return (p.GetString()?.CompareTo(limit) ?? 1) < 0;
         }
@@ -131,18 +173,14 @@ namespace ditjson.Querying
         [RequiresUnreferencedCode("Calls System.Text.Json.JsonSerializer.Deserialize<TValue>(String, JsonSerializerOptions)")]
         private static string Out(JsonElement m, string r, int c)
         {
-            var o = new System.Text.Json.JsonSerializerOptions
-            {
-                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
-                WriteIndented = true
-            };
+           
             var x = new
             {
                 metadata = JsonSerializer.Deserialize<Dictionary<string, object>>(m.GetRawText()),
                 results = JsonSerializer.Deserialize<List<object>>(r),
                 resultCount = c
             };
-            return JsonSerializer.Serialize(x, o);
+            return JsonSerializer.Serialize(x, OutputJsonOptions);
         }
 
         private static string Proj(JsonElement e, string[] fs)
@@ -150,12 +188,19 @@ namespace ditjson.Querying
             var s = new StringBuilder("{");
             var f = true;
             foreach (var x in fs)
+            {
                 if (e.TryGetProperty(x, out var v))
                 {
-                    if (!f) s.Append(',');
+                    if (!f)
+                    {
+                        s.Append(',');
+                    }
+
                     s.Append('"').Append(x).Append("\":").Append(v.GetRawText());
                     f = false;
                 }
+            }
+
             return s.Append('}').ToString();
         }
 

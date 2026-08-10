@@ -20,7 +20,7 @@ public class RC4Tests
         var decrypted = rc4Decrypt.Decrypt(ciphertext);
 
         // Assert
-        CollectionAssert.AreEqual(plaintext, decrypted);
+        Assert.AreSequenceEqual(plaintext, decrypted);
     }
 
     [TestMethod]
@@ -53,7 +53,7 @@ public class RC4Tests
         var result2 = rc42.Decrypt(data);
 
         // Assert
-        CollectionAssert.AreNotEqual(result1, result2);
+        Assert.AreNotSequenceEqual(result1, result2);
     }
 
     [TestMethod]
@@ -73,9 +73,9 @@ public class RC4Tests
     public void RC4_WithKnownKeyAndCiphertext_ProducesCorrectPlaintext()
     {
         // Arrange: Known RC4 test vector
-        var key = new byte[] { 0x4B, 0x65, 0x79 };  // "Key"
+        var key = "Key"u8.ToArray();  // "Key"
         var ciphertext = new byte[] { 0xEB, 0x9F, 0x77, 0x97, 0xB7, 0x77, 0xBB, 0xC1 };
-        var expectedPlaintext = new byte[] { 0x50, 0x6C, 0x61, 0x69, 0x6E, 0x74, 0x65, 0x78 };  // "Plaintext"
+        var expectedPlaintext = "Plaintex"u8.ToArray();  // "Plaintext"
 
         // Act
         var rc4 = new RC4(key);
@@ -94,7 +94,9 @@ public class RC4Tests
         var key = new byte[] { 0x01, 0x02, 0x03 };
         var data = new byte[10000];
         for (var i = 0; i < data.Length; i++)
+        {
             data[i] = (byte)(i % 256);
+        }
 
         // Act
         var rc4 = new RC4(key);
@@ -102,7 +104,7 @@ public class RC4Tests
 
         // Assert
         Assert.HasCount(data.Length, result);
-        CollectionAssert.AreNotEqual(data, result);  // Should be different after decryption
+        Assert.AreNotSequenceEqual(data, result);  // Should be different after decryption
     }
 
     [TestMethod]
@@ -110,7 +112,7 @@ public class RC4Tests
     {
         // Arrange
         var key = new byte[] { 0xFF };
-        var data = new byte[] { 0x42 };
+        var data = "B"u8.ToArray();
 
         // Act
         var rc4 = new RC4(key);

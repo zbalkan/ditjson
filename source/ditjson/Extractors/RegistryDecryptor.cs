@@ -9,20 +9,39 @@ namespace ditjson.Extractors
 
         internal static byte[]? ExtractBootkey(string systemHivePath)
         {
-            if (!File.Exists(systemHivePath)) return null;
+            if (!File.Exists(systemHivePath))
+            {
+                return null;
+            }
+
             try
             {
                 using var hive = new RegistryHive(systemHivePath);
                 var currentBytes = hive.ReadValue(hive.OpenKey("Select"), "Current");
-                if (currentBytes == null || currentBytes.Length < 4) return null;
+                if (currentBytes == null || currentBytes.Length < 4)
+                {
+                    return null;
+                }
+
                 var controlSet = $"ControlSet{BitConverter.ToInt32(currentBytes, 0):D3}";
                 var hex = string.Empty;
                 foreach (var name in new[] { "JD", "Skew1", "GBG", "Data" })
+                {
                     hex += hive.ReadClassName(hive.OpenKey($"{controlSet}\\Control\\Lsa\\{name}"));
-                if (hex.Length != 32) throw new InvalidDataException("LSA class names do not contain a 16-byte boot key");
+                }
+
+                if (hex.Length != 32)
+                {
+                    throw new InvalidDataException("LSA class names do not contain a 16-byte boot key");
+                }
+
                 var scrambled = Convert.FromHexString(hex);
                 var bootkey = new byte[16];
-                for (var i = 0; i < bootkey.Length; i++) bootkey[i] = scrambled[BootkeyTransform[i]];
+                for (var i = 0; i < bootkey.Length; i++)
+                {
+                    bootkey[i] = scrambled[BootkeyTransform[i]];
+                }
+
                 return bootkey;
             }
             catch (Exception ex)
@@ -62,12 +81,16 @@ namespace ditjson.Extractors
         private void Initialize(byte[] key)
         {
             for (var i = 0; i < 256; i++)
+            {
                 S[i] = (byte)i;
+            }
 
             // An empty key is not valid RC4 input, but keeping the identity
             // permutation provides a deterministic, non-throwing fallback.
             if (key == null || key.Length == 0)
+            {
                 return;
+            }
 
             var j = 0;
             for (var i = 0; i < 256; i++)

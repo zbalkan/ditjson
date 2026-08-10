@@ -134,7 +134,9 @@ namespace ditjson
             foreach (var table in StructuredTables)
             {
                 if (tablesInDb.Contains(table))
+                {
                     selected.Add(table);
+                }
             }
 
             return selected;

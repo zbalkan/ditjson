@@ -19,7 +19,9 @@ namespace ditjson.Extractors
         internal static void ExtractGroupMemberships(Session session, JET_DBID dbid, List<User> users, List<Group> groups, List<Computer> computers)
         {
             if (users.Count == 0 && computers.Count == 0 && groups.Count == 0)
+            {
                 return;
+            }
 
             var userDict = users.ToDictionary(u => u.RecordId);
             var groupDict = groups.ToDictionary(g => g.RecordId);
@@ -31,7 +33,9 @@ namespace ditjson.Extractors
                 var columnDict = Api.GetColumnDictionary(session, table);
 
                 if (!columnDict.ContainsKey("ATTj590001") || !columnDict.ContainsKey("ATTj590002") || !columnDict.ContainsKey("ATTk590005"))
+                {
                     return;
+                }
 
                 Api.JetSetTableSequential(session, table, SetTableSequentialGrbit.None);
                 Api.MoveBeforeFirst(session, table);
@@ -74,7 +78,9 @@ namespace ditjson.Extractors
             Dictionary<int, Group> groupDict, Dictionary<int, User> userDict, Dictionary<int, Computer> computerDict)
         {
             if (!groupDict.TryGetValue(sourceRecordId, out var group))
+            {
                 return;
+            }
 
             GroupMember? member = null;
 
@@ -119,7 +125,9 @@ namespace ditjson.Extractors
             {
                 group.Members ??= [];
                 if (!group.Members.Any(m => m.RecordId == targetRecordId))
+                {
                     group.Members.Add(member);
+                }
             }
         }
 
@@ -127,7 +135,9 @@ namespace ditjson.Extractors
                     Dictionary<int, User> userDict, Dictionary<int, Computer> computerDict, Dictionary<int, Group> groupDict)
         {
             if (!groupDict.TryGetValue(targetRecordId, out var targetGroup))
+            {
                 return;
+            }
 
             var membership = new GroupMembership
             {
@@ -143,13 +153,17 @@ namespace ditjson.Extractors
             {
                 user.MemberOf ??= [];
                 if (!user.MemberOf.Any(m => m.RecordId == targetRecordId))
+                {
                     user.MemberOf.Add(membership);
+                }
             }
             else if (computerDict.TryGetValue(sourceRecordId, out var computer))
             {
                 computer.MemberOf ??= [];
                 if (!computer.MemberOf.Any(m => m.RecordId == targetRecordId))
+                {
                     computer.MemberOf.Add(membership);
+                }
             }
         }
     }

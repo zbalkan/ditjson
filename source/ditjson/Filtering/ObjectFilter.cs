@@ -8,10 +8,14 @@ namespace ditjson.Filtering
         internal static void CleanupComputer(Computer? computer, bool includeEmptyCollections)
         {
             if (computer == null)
+            {
                 return;
+            }
 
             if (!includeEmptyCollections && computer.MemberOf != null && computer.MemberOf.Count == 0)
+            {
                 computer.MemberOf = null;
+            }
 
             if (computer.PasswordHashes != null && string.IsNullOrEmpty(computer.PasswordHashes.NtHash)
                 && string.IsNullOrEmpty(computer.PasswordHashes.LmHash))
@@ -35,27 +39,39 @@ namespace ditjson.Filtering
         internal static void CleanupGroup(Group? group, bool includeEmptyCollections)
         {
             if (group == null)
+            {
                 return;
+            }
 
             if (!includeEmptyCollections && group.Members != null && group.Members.Count == 0)
+            {
                 group.Members = null;
+            }
         }
 
         internal static void CleanupUser(User? user, bool includeEmptyCollections)
         {
             if (user == null)
+            {
                 return;
+            }
 
             if (!includeEmptyCollections)
             {
                 if (user.MemberOf != null && user.MemberOf.Count == 0)
+                {
                     user.MemberOf = null;
+                }
 
                 if (user.Ancestors != null && user.Ancestors.Count == 0)
+                {
                     user.Ancestors = null;
+                }
 
                 if (user.PasswordHistory != null && user.PasswordHistory.Count == 0)
+                {
                     user.PasswordHistory = null;
+                }
             }
 
             if (user.PasswordHashes != null && string.IsNullOrEmpty(user.PasswordHashes.NtHash)
@@ -74,10 +90,14 @@ namespace ditjson.Filtering
         internal static bool ShouldIncludeComputer(Computer? computer, FilterOptions options)
         {
             if (computer == null)
+            {
                 return false;
+            }
 
             if (computer.IsDeleted && !options.IncludeDeleted)
+            {
                 return false;
+            }
 
             return !options.ExcludeComputers;
         }
@@ -85,10 +105,14 @@ namespace ditjson.Filtering
         internal static bool ShouldIncludeGroup(Group? group, FilterOptions options)
         {
             if (group == null)
+            {
                 return false;
+            }
 
             if (group.IsDeleted && !options.IncludeDeleted)
+            {
                 return false;
+            }
 
             return !options.ExcludeGroups;
         }
@@ -96,16 +120,24 @@ namespace ditjson.Filtering
         internal static bool ShouldIncludeUser(User? user, FilterOptions? options)
         {
             if (user == null || options == null)
+            {
                 return false;
+            }
 
             if (user.IsDeleted && !options.IncludeDeleted)
+            {
                 return false;
+            }
 
             if (options.ExcludeDisabled && user.UserAccountControl?.Contains("ACCOUNTDISABLE") == true)
+            {
                 return false;
+            }
 
             if (options.ExcludeLockedOut && user.UserAccountControl?.Contains("LOCKOUT") == true)
+            {
                 return false;
+            }
 
             return true;
         }

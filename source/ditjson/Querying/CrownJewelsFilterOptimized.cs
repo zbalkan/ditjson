@@ -52,7 +52,9 @@ namespace ditjson.Querying
                         if (query.Predicate(user))
                         {
                             if (totalResults > 0)
+                            {
                                 results.Append(',');
+                            }
 
                             results.Append(ProjectElementToJson(user, query.Fields));
                             query.Count++;
@@ -68,7 +70,9 @@ namespace ditjson.Querying
                     if (computerQuery.Predicate(computer))
                     {
                         if (totalResults > 0)
+                        {
                             results.Append(',');
+                        }
 
                         results.Append(ProjectElementToJson(computer, computerQuery.Fields));
                         computerQuery.Count++;
@@ -82,7 +86,9 @@ namespace ditjson.Querying
                 foreach (var query in allQueries)
                 {
                     if (query.Count > 0)
+                    {
                         Console.Error.WriteLine($"[*] {query.Name}: {query.Count} results");
+                    }
                 }
 
                 return BuildFinalOutput(metadata, results.ToString(), totalResults);
@@ -116,7 +122,9 @@ namespace ditjson.Querying
         private static bool HasCleartextPassword(JsonElement user)
         {
             if (!user.TryGetProperty("supplementalCredentials", out var supp))
+            {
                 return false;
+            }
 
             return supp.TryGetProperty("clearTextPassword", out var pwd) &&
                    pwd.ValueKind == JsonValueKind.String &&
@@ -126,12 +134,16 @@ namespace ditjson.Querying
         private static bool HasFlag(JsonElement user, string flag)
         {
             if (!user.TryGetProperty("userAccountControl", out var uac))
+            {
                 return false;
+            }
 
             foreach (var item in uac.EnumerateArray())
             {
                 if (item.ValueKind == JsonValueKind.String && item.GetString() == flag)
+                {
                     return true;
+                }
             }
             return false;
         }
@@ -139,7 +151,9 @@ namespace ditjson.Querying
         private static bool HasKerberosKeys(JsonElement user)
         {
             if (!user.TryGetProperty("supplementalCredentials", out var supp))
+            {
                 return false;
+            }
 
             return supp.TryGetProperty("kerberosKeys", out var keys) &&
                    keys.ValueKind == JsonValueKind.Array &&
@@ -149,13 +163,17 @@ namespace ditjson.Querying
         private static bool HasMembership(JsonElement user, string groupName)
         {
             if (!user.TryGetProperty("memberOf", out var memberOf))
+            {
                 return false;
+            }
 
             foreach (var member in memberOf.EnumerateArray())
             {
                 if (member.TryGetProperty("name", out var name) &&
                     name.GetString() == groupName)
+                {
                     return true;
+                }
             }
             return false;
         }
@@ -163,7 +181,9 @@ namespace ditjson.Querying
         private static bool HasPasswordHash(JsonElement user)
         {
             if (!user.TryGetProperty("passwordHashes", out var hashes))
+            {
                 return false;
+            }
 
             return hashes.TryGetProperty("ntHash", out var nt) &&
                    nt.ValueKind == JsonValueKind.String &&
@@ -174,7 +194,9 @@ namespace ditjson.Querying
         {
             if (!user.TryGetProperty("lastLogon", out var lastLogon) ||
                 lastLogon.ValueKind != JsonValueKind.String)
+            {
                 return false;
+            }
 
             var thirtyDaysAgo = DateTime.UtcNow.AddDays(-30).ToString("O");
             return lastLogon.GetString()?.CompareTo(thirtyDaysAgo) > 0 && HasPasswordHash(user);
@@ -183,11 +205,15 @@ namespace ditjson.Querying
         private static bool IsServiceAccountWithNonExpiring(JsonElement user)
         {
             if (!HasFlag(user, "DONT_EXPIRE_PASSWORD"))
+            {
                 return false;
+            }
 
             if (!user.TryGetProperty("samAccountName", out var sam) ||
                 sam.ValueKind != JsonValueKind.String)
+            {
                 return false;
+            }
 
             var samStr = sam.GetString() ?? "";
             return samStr.Contains("svc", StringComparison.OrdinalIgnoreCase) ||
@@ -199,7 +225,9 @@ namespace ditjson.Querying
         {
             if (!computer.TryGetProperty("passwordLastSet", out var pwdSet) ||
                 pwdSet.ValueKind != JsonValueKind.String)
+            {
                 return false;
+            }
 
             var ninetyDaysAgo = DateTime.UtcNow.AddDays(-90).ToString("O");
             return pwdSet.GetString()?.CompareTo(ninetyDaysAgo) < 0;
@@ -215,7 +243,9 @@ namespace ditjson.Querying
                 if (element.TryGetProperty(field, out var value))
                 {
                     if (!first)
+                    {
                         sb.Append(',');
+                    }
 
                     sb.Append('"').Append(field).Append("\":");
                     sb.Append(value.GetRawText());

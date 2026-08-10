@@ -13,6 +13,12 @@ namespace ditjson.Querying
     /// </summary>
     internal static class CrownJewelsFilter
     {
+        private static readonly JsonSerializerOptions OutputJsonOptions = new()
+        {
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+            WriteIndented = true
+        };
+
         [RequiresUnreferencedCode("Calls ditjson.Querying.CrownJewelsFilter.BuildOutputJson(JsonElement, List<JsonElement>)")]
         public static string ApplyCrownJewels(string jsonData)
         {
@@ -49,12 +55,6 @@ namespace ditjson.Querying
         [RequiresUnreferencedCode("Calls System.Text.Json.JsonSerializer.Deserialize<TValue>(String, JsonSerializerOptions)")]
         private static string BuildOutputJson(JsonElement metadata, List<JsonElement> results)
         {
-            var options = new JsonSerializerOptions
-            {
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-                WriteIndented = true
-            };
-
             var output = new
             {
                 metadata = JsonSerializer.Deserialize<Dictionary<string, object>>(metadata.GetRawText()),
@@ -62,18 +62,22 @@ namespace ditjson.Querying
                 resultCount = results.Count
             };
 
-            return JsonSerializer.Serialize(output, options);
+            return JsonSerializer.Serialize(output, OutputJsonOptions);
         }
 
         private static bool HasFlag(JsonElement user, string flag)
         {
             if (!user.TryGetProperty("userAccountControl", out var uac))
+            {
                 return false;
+            }
 
             foreach (var item in uac.EnumerateArray())
             {
                 if (item.ValueKind == JsonValueKind.String && item.GetString() == flag)
+                {
                     return true;
+                }
             }
             return false;
         }
@@ -81,13 +85,17 @@ namespace ditjson.Querying
         private static bool HasMembership(JsonElement user, string groupName)
         {
             if (!user.TryGetProperty("memberOf", out var memberOf))
+            {
                 return false;
+            }
 
             foreach (var member in memberOf.EnumerateArray())
             {
                 if (member.TryGetProperty("name", out var name) &&
                     name.GetString() == groupName)
+                {
                     return true;
+                }
             }
             return false;
         }
@@ -95,12 +103,16 @@ namespace ditjson.Querying
         private static bool HasPasswordHash(JsonElement user)
         {
             if (!user.TryGetProperty("passwordHashes", out var hashes))
+            {
                 return false;
+            }
 
             if (hashes.TryGetProperty("ntHash", out var nt) &&
                 nt.ValueKind == JsonValueKind.String &&
                 !string.IsNullOrEmpty(nt.GetString()))
+            {
                 return true;
+            }
 
             return false;
         }
@@ -118,7 +130,7 @@ namespace ditjson.Querying
                 }
             }
 
-            var json = JsonSerializer.Serialize(dict, new JsonSerializerOptions { WriteIndented = false });
+            var json = JsonSerializer.Serialize(dict);
             return JsonDocument.Parse(json).RootElement.Clone();
         }
 
@@ -140,7 +152,9 @@ namespace ditjson.Querying
             }
 
             if (results.Count > 0)
+            {
                 Console.Error.WriteLine($"[+] Found {results.Count} results");
+            }
 
             return results;
         }
@@ -160,7 +174,9 @@ namespace ditjson.Querying
             }
 
             if (results.Count > 0)
+            {
                 Console.Error.WriteLine($"[+] Found {results.Count} results");
+            }
 
             return results;
         }
@@ -180,7 +196,9 @@ namespace ditjson.Querying
             }
 
             if (results.Count > 0)
+            {
                 Console.Error.WriteLine($"[+] Found {results.Count} results");
+            }
 
             return results;
         }
@@ -203,7 +221,9 @@ namespace ditjson.Querying
             }
 
             if (results.Count > 0)
+            {
                 Console.Error.WriteLine($"[+] Found {results.Count} results");
+            }
 
             return results;
         }
@@ -227,7 +247,9 @@ namespace ditjson.Querying
             }
 
             if (results.Count > 0)
+            {
                 Console.Error.WriteLine($"[+] Found {results.Count} results");
+            }
 
             return results;
         }
@@ -254,7 +276,9 @@ namespace ditjson.Querying
             }
 
             if (results.Count > 0)
+            {
                 Console.Error.WriteLine($"[+] Found {results.Count} results");
+            }
 
             return results;
         }
@@ -277,7 +301,9 @@ namespace ditjson.Querying
             }
 
             if (results.Count > 0)
+            {
                 Console.Error.WriteLine($"[+] Found {results.Count} results");
+            }
 
             return results;
         }
@@ -304,7 +330,15 @@ namespace ditjson.Querying
 
             private static readonly string[] Uac = { "userAccountControl" };
 
-            private static string[] Compose(params string[][] sets) => sets.SelectMany(x => x).ToArray();
+            private static string[] Compose(params string[]?[]? sets)
+            {
+                if (sets == null || sets.Length == 0)
+                {
+                    return Array.Empty<string>();
+                }
+                
+                return sets.Where(x => x != null).SelectMany(x => x!).ToArray();
+            }
         }
     }
 }

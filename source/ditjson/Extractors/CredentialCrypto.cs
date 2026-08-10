@@ -10,7 +10,11 @@ namespace ditjson.Extractors
     {
         internal static List<byte[]> DecryptPekList(byte[] blob, byte[] bootkey)
         {
-            if (blob.Length < 24 || bootkey.Length != 16) throw new InvalidDataException("Invalid encrypted PEK list");
+            if (blob.Length < 24 || bootkey.Length != 16)
+            {
+                throw new InvalidDataException("Invalid encrypted PEK list");
+            }
+
             var version = BitConverter.ToUInt32(blob, 0);
             var material = blob.AsSpan(8, 16).ToArray();
             var cipher = blob.AsSpan(24).ToArray();
@@ -19,33 +23,67 @@ namespace ditjson.Extractors
             {
                 using var md5 = IncrementalHash.CreateHash(HashAlgorithmName.MD5);
                 md5.AppendData(bootkey);
-                for (var i = 0; i < 1000; i++) md5.AppendData(material);
+                for (var i = 0; i < 1000; i++)
+                {
+                    md5.AppendData(material);
+                }
+
                 plain = new RC4(md5.GetHashAndReset()).Decrypt(cipher);
             }
-            else if (version == 3) plain = AesDecrypt(bootkey, material, cipher);
-            else throw new InvalidDataException($"Unsupported PEK list version {version}");
+            else if (version == 3)
+            {
+                plain = AesDecrypt(bootkey, material, cipher);
+            }
+            else
+            {
+                throw new InvalidDataException($"Unsupported PEK list version {version}");
+            }
 
-            if (plain.Length < 52) throw new InvalidDataException("Truncated plaintext PEK list");
+            if (plain.Length < 52)
+            {
+                throw new InvalidDataException("Truncated plaintext PEK list");
+            }
+
             var keys = new List<byte[]>();
             for (var offset = 32; offset + 20 <= plain.Length; offset += 20)
             {
                 var index = version == 2 ? plain[offset] : BitConverter.ToInt32(plain, offset);
-                if (index != keys.Count) break;
+                if (index != keys.Count)
+                {
+                    break;
+                }
+
                 keys.Add(plain.AsSpan(offset + 4, 16).ToArray());
             }
-            if (keys.Count == 0) throw new InvalidDataException("PEK list contains no keys");
+            if (keys.Count == 0)
+            {
+                throw new InvalidDataException("PEK list contains no keys");
+            }
+
             return keys;
         }
 
         internal static byte[] UnwrapAttribute(byte[] blob, IReadOnlyList<byte[]> peks)
         {
-            if (blob.Length < 40) throw new InvalidDataException("Truncated encrypted credential attribute");
+            if (blob.Length < 40)
+            {
+                throw new InvalidDataException("Truncated encrypted credential attribute");
+            }
+
             var version = BitConverter.ToUInt32(blob, 0);
             var index = blob[4];
-            if (index >= peks.Count) throw new InvalidDataException($"Unknown PEK index {index}");
+            if (index >= peks.Count)
+            {
+                throw new InvalidDataException($"Unknown PEK index {index}");
+            }
+
             var material = blob.AsSpan(8, 16).ToArray();
             var cipher = blob.AsSpan(24).ToArray();
-            if (version == 0x13) return AesDecrypt(peks[index], material, cipher);
+            if (version == 0x13)
+            {
+                return AesDecrypt(peks[index], material, cipher);
+            }
+
             using var md5 = IncrementalHash.CreateHash(HashAlgorithmName.MD5);
             md5.AppendData(peks[index]);
             md5.AppendData(material);
@@ -54,7 +92,11 @@ namespace ditjson.Extractors
 
         internal static byte[] RemoveRidDesLayer(byte[] encrypted, uint rid)
         {
-            if (encrypted.Length % 16 != 0) throw new InvalidDataException("RID-DES ciphertext must contain 16-byte hashes");
+            if (encrypted.Length % 16 != 0)
+            {
+                throw new InvalidDataException("RID-DES ciphertext must contain 16-byte hashes");
+            }
+
             var (key1, key2) = DeriveRidKeys(rid);
             var result = new byte[encrypted.Length];
             for (var offset = 0; offset < encrypted.Length; offset += 16)
@@ -74,7 +116,11 @@ namespace ditjson.Extractors
 
         internal static byte[] TransformKey(byte[] key)
         {
-            if (key.Length != 7) throw new ArgumentException("A DES source key is exactly seven bytes", nameof(key));
+            if (key.Length != 7)
+            {
+                throw new ArgumentException("A DES source key is exactly seven bytes", nameof(key));
+            }
+
             var output = new byte[8];
             output[0] = (byte)(key[0] >> 1);
             output[1] = (byte)(((key[0] & 1) << 6) | (key[1] >> 2));
@@ -84,13 +130,21 @@ namespace ditjson.Extractors
             output[5] = (byte)(((key[4] & 31) << 2) | (key[5] >> 6));
             output[6] = (byte)(((key[5] & 63) << 1) | (key[6] >> 7));
             output[7] = (byte)(key[6] & 127);
-            for (var i = 0; i < output.Length; i++) output[i] <<= 1;
+            for (var i = 0; i < output.Length; i++)
+            {
+                output[i] <<= 1;
+            }
+
             return output;
         }
 
         private static byte[] AesDecrypt(byte[] key, byte[] iv, byte[] cipher)
         {
-            if (cipher.Length % 16 != 0) throw new InvalidDataException("AES ciphertext is not block aligned");
+            if (cipher.Length % 16 != 0)
+            {
+                throw new InvalidDataException("AES ciphertext is not block aligned");
+            }
+
             using var aes = Aes.Create();
             aes.Key = key; aes.IV = iv; aes.Mode = CipherMode.CBC; aes.Padding = PaddingMode.None;
             using var decryptor = aes.CreateDecryptor();

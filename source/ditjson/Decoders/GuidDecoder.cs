@@ -7,7 +7,9 @@ namespace ditjson.Decoders
         internal static Guid Decode(byte[]? guidBytes)
         {
             if (guidBytes == null || guidBytes.Length != 16)
+            {
                 return Guid.Empty;
+            }
 
             try
             {
@@ -22,10 +24,14 @@ namespace ditjson.Decoders
         internal static Guid Decode(string? hexValue)
         {
             if (string.IsNullOrEmpty(hexValue))
+            {
                 return Guid.Empty;
+            }
 
             if (Guid.TryParse(hexValue, out var guid))
+            {
                 return guid;
+            }
 
             try
             {
@@ -41,7 +47,9 @@ namespace ditjson.Decoders
         private static byte[]? HexToBytes(string hex)
         {
             if (string.IsNullOrEmpty(hex) || hex.Length % 2 != 0)
+            {
                 return null;
+            }
 
             var result = new byte[hex.Length / 2];
             for (var i = 0; i < hex.Length; i += 2)

@@ -8,7 +8,9 @@ namespace ditjson
         internal static byte[] ConvertHexStringToBytes(string hexString)
         {
             if (hexString.Length % 2 != 0)
+            {
                 throw new ArgumentException("Invalid hex string length");
+            }
 
             var bytes = new byte[hexString.Length / 2];
             for (var i = 0; i < bytes.Length; i++)

@@ -11,7 +11,9 @@ namespace ditjson.Extractors
         internal static void ExtractPasswordHistory(Session session, JET_DBID dbid, List<User> users, IReadOnlyList<byte[]> peks)
         {
             if (users == null || users.Count == 0 || peks.Count == 0)
+            {
                 return;
+            }
 
             Console.Error.WriteLine("[*] Extracting password history...");
 
@@ -51,7 +53,9 @@ namespace ditjson.Extractors
                 var pwdHistoryData = ColumnExtractor.GetBinary(
                     session, table, columnDict, NtdsColumnNames.NtHashHistory);
                 if (pwdHistoryData == null || pwdHistoryData.Length == 0)
+                {
                     return;
+                }
 
                 var hashes = ParsePasswordHistory(pwdHistoryData, peks, PasswordHashDecryptor.GetRid(user.ObjectSid));
                 if (hashes != null && hashes.Count > 0)
@@ -65,10 +69,21 @@ namespace ditjson.Extractors
             }
         }
 
-        private static bool isZeroHash(byte[] hash)
+        private static bool IsZeroHash(byte[] hash)
         {
-            if (hash == null || hash.Length < 16) return true;
-            for (var i = 0; i < 16; i++) if (hash[i] != 0) return false;
+            if (hash == null || hash.Length < 16)
+            {
+                return true;
+            }
+
+            for (var i = 0; i < 16; i++)
+            {
+                if (hash[i] != 0)
+                {
+                    return false;
+                }
+            }
+
             return true;
         }
 
@@ -81,7 +96,10 @@ namespace ditjson.Extractors
                 for (var offset = 0; offset + 16 <= plain.Length; offset += 16)
                 {
                     var hashData = plain.AsSpan(offset, 16).ToArray();
-                    if (!isZeroHash(hashData)) hashes.Add(BitConverter.ToString(hashData).Replace("-", "").ToUpperInvariant());
+                    if (!IsZeroHash(hashData))
+                    {
+                        hashes.Add(BitConverter.ToString(hashData).Replace("-", "").ToUpperInvariant());
+                    }
                 }
                 return hashes;
             }

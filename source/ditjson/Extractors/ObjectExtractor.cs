@@ -18,7 +18,9 @@ namespace ditjson.Extractors
             var computers = new List<Computer>();
 
             if (!selectedTables.Contains("datatable"))
+            {
                 return (users, groups, computers);
+            }
 
             try
             {
@@ -37,7 +39,9 @@ namespace ditjson.Extractors
                         // ATTj590000, which is not an AD datatable column, so every
                         // record was skipped before it could be classified.
                         if (!columnDict.ContainsKey(NtdsColumnNames.SamAccountType))
+                        {
                             continue;
+                        }
 
                         var samAccountType = ColumnExtractor.GetInt32(
                             session, table, columnDict, NtdsColumnNames.SamAccountType);

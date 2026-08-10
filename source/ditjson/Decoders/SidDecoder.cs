@@ -10,21 +10,29 @@ namespace ditjson.Decoders
         internal static string? Decode(byte[]? sidBytes)
         {
             if (sidBytes == null || sidBytes.Length < 8)
+            {
                 return null;
+            }
 
             try
             {
                 var revision = sidBytes[0];
                 if (revision > 15)
+                {
                     return null;
+                }
 
                 var subAuthorityCount = sidBytes[1];
                 if (sidBytes.Length < 8 + (subAuthorityCount * 4))
+                {
                     return null;
+                }
 
                 long authority = 0;
                 for (var i = 2; i <= 7; i++)
+                {
                     authority = (authority << 8) | sidBytes[i];
+                }
 
                 var sb = new StringBuilder("S-").Append(revision).Append('-').Append(authority);
 
@@ -47,7 +55,9 @@ namespace ditjson.Decoders
         internal static string? Decode(string hexValue)
         {
             if (string.IsNullOrEmpty(hexValue))
+            {
                 return null;
+            }
 
             try
             {
@@ -80,7 +90,9 @@ namespace ditjson.Decoders
         private static byte[]? HexToBytes(string hex)
         {
             if (string.IsNullOrEmpty(hex) || hex.Length % 2 != 0)
+            {
                 return null;
+            }
 
             var result = new byte[hex.Length / 2];
             for (var i = 0; i < hex.Length; i += 2)

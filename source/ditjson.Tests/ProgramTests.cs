@@ -52,7 +52,7 @@ public class ProgramTests
 
             Assert.AreEqual(2, exitCode);
             Assert.AreEqual(string.Empty, stdout.ToString());
-            StringAssert.Contains(stderr.ToString(), "ntds.dit");
+            Assert.Contains("ntds.dit", stderr.ToString());
         }
         finally
         {
@@ -77,7 +77,7 @@ public class ProgramTests
 
             Assert.AreEqual(1, exitCode);
             Assert.AreEqual(string.Empty, stdout.ToString());
-            StringAssert.Contains(stderr.ToString(), "NTDS file not found");
+            Assert.Contains("NTDS file not found", stderr.ToString());
         }
         finally
         {

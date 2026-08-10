@@ -10,11 +10,15 @@ namespace ditjson.Decoders
         internal static string? Decode(string? hexValue)
         {
             if (string.IsNullOrEmpty(hexValue))
+            {
                 return null;
+            }
 
             if (!long.TryParse(hexValue, System.Globalization.NumberStyles.HexNumber,
                 null, out var filetime))
+            {
                 return null;
+            }
 
             return ConvertFileTimeToUtc(filetime);
         }
@@ -24,7 +28,9 @@ namespace ditjson.Decoders
         internal static string? DecodeDsTime(long seconds)
         {
             if (seconds <= 0)
+            {
                 return null;
+            }
 
             try
             {
@@ -41,10 +47,14 @@ namespace ditjson.Decoders
         private static string? ConvertFileTimeToUtc(long filetime)
         {
             if (filetime == 0)
+            {
                 return null;
+            }
 
             if (filetime == long.MaxValue)
+            {
                 return null;
+            }
 
             try
             {
