@@ -45,9 +45,6 @@ public class DatabaseFileMetadataTests
         }
     }
 
-    private static void WriteUInt32(byte[] data, int offset, uint value) =>
-        BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(offset), value);
-
     private static void WriteLogTime(byte[] data, int offset, byte year, byte month, byte day,
         byte hour, byte minute, byte second)
     {
@@ -58,4 +55,7 @@ public class DatabaseFileMetadataTests
         data[offset + 4] = month;
         data[offset + 5] = year;
     }
+
+    private static void WriteUInt32(byte[] data, int offset, uint value) =>
+            BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(offset), value);
 }

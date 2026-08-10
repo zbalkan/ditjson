@@ -7,6 +7,14 @@ namespace ditjson.Tests.Extractors;
 public class LinkExtractorTests
 {
     [TestMethod]
+    public void AddDirectMembership_IgnoresUnknownGroupOrMember()
+    {
+        Assert.IsFalse(LinkExtractor.AddDirectMembership(10, 20, null, [], [], []));
+        Assert.IsFalse(LinkExtractor.AddDirectMembership(10, 20, null, [],
+            [new Group { RecordId = 20 }], []));
+    }
+
+    [TestMethod]
     public void AddDirectMembership_PopulatesBothSidesForUser()
     {
         var user = new User {
@@ -78,13 +86,5 @@ public class LinkExtractorTests
         Assert.IsTrue(group.Members!.All(m => m.IsPrimaryGroup));
         Assert.AreEqual(group.ObjectSid, user.MemberOf!.Single().ObjectSid);
         Assert.AreEqual(group.ObjectSid, computer.MemberOf!.Single().ObjectSid);
-    }
-
-    [TestMethod]
-    public void AddDirectMembership_IgnoresUnknownGroupOrMember()
-    {
-        Assert.IsFalse(LinkExtractor.AddDirectMembership(10, 20, null, [], [], []));
-        Assert.IsFalse(LinkExtractor.AddDirectMembership(10, 20, null, [],
-            [new Group { RecordId = 20 }], []));
     }
 }

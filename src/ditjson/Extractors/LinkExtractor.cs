@@ -15,8 +15,42 @@ namespace ditjson.Extractors
         private const string LinkDnt = "link_DNT";
         private const int MemberLinkId = 2;
 
+        internal static bool AddDirectMembership(int memberRecordId, int groupRecordId, string? deletedTime,
+            IList<User> users, IList<Group> groups, IList<Computer> computers)
+            => AddDirectMembership(memberRecordId, groupRecordId, deletedTime,
+                users.ToDictionary(u => u.RecordId), groups.ToDictionary(g => g.RecordId),
+                computers.ToDictionary(c => c.RecordId));
+
+        internal static int AddPrimaryGroupMemberships(IList<User> users, IList<Group> groups,
+            IList<Computer> computers)
+        {
+            var groupsBySid = groups
+                .Where(g => !string.IsNullOrEmpty(g.ObjectSid))
+                .GroupBy(g => g.ObjectSid!, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+            var added = 0;
+
+            foreach (var user in users)
+            {
+                if (TryAddPrimaryGroup(user, user.PrimaryGroupId, groupsBySid))
+                {
+                    added++;
+                }
+            }
+
+            foreach (var computer in computers)
+            {
+                if (TryAddPrimaryGroup(computer, computer.PrimaryGroupId, groupsBySid))
+                {
+                    added++;
+                }
+            }
+
+            return added;
+        }
+
         internal static void ExtractGroupMemberships(Session session, JET_DBID dbid, List<User> users,
-            List<Group> groups, List<Computer> computers)
+                            List<Group> groups, List<Computer> computers)
         {
             if (users.Count == 0 && computers.Count == 0 && groups.Count == 0)
             {
@@ -85,12 +119,6 @@ namespace ditjson.Extractors
             }
         }
 
-        internal static bool AddDirectMembership(int memberRecordId, int groupRecordId, string? deletedTime,
-            IList<User> users, IList<Group> groups, IList<Computer> computers)
-            => AddDirectMembership(memberRecordId, groupRecordId, deletedTime,
-                users.ToDictionary(u => u.RecordId), groups.ToDictionary(g => g.RecordId),
-                computers.ToDictionary(c => c.RecordId));
-
         private static bool AddDirectMembership(int memberRecordId, int groupRecordId, string? deletedTime,
             Dictionary<int, User> users, Dictionary<int, Group> groups,
             Dictionary<int, Computer> computers)
@@ -110,58 +138,6 @@ namespace ditjson.Extractors
             }
 
             AddMembership(member, group, deletedTime, false);
-            return true;
-        }
-
-        internal static int AddPrimaryGroupMemberships(IList<User> users, IList<Group> groups,
-            IList<Computer> computers)
-        {
-            var groupsBySid = groups
-                .Where(g => !string.IsNullOrEmpty(g.ObjectSid))
-                .GroupBy(g => g.ObjectSid!, StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
-            var added = 0;
-
-            foreach (var user in users)
-            {
-                if (TryAddPrimaryGroup(user, user.PrimaryGroupId, groupsBySid))
-                {
-                    added++;
-                }
-            }
-
-            foreach (var computer in computers)
-            {
-                if (TryAddPrimaryGroup(computer, computer.PrimaryGroupId, groupsBySid))
-                {
-                    added++;
-                }
-            }
-
-            return added;
-        }
-
-        private static bool TryAddPrimaryGroup(NtdsObject principal, int primaryGroupId,
-            Dictionary<string, Group> groupsBySid)
-        {
-            if (primaryGroupId <= 0 || string.IsNullOrEmpty(principal.ObjectSid))
-            {
-                return false;
-            }
-
-            var separator = principal.ObjectSid.LastIndexOf('-');
-            if (separator <= 0)
-            {
-                return false;
-            }
-
-            var groupSid = $"{principal.ObjectSid[..separator]}-{primaryGroupId}";
-            if (!groupsBySid.TryGetValue(groupSid, out var group))
-            {
-                return false;
-            }
-
-            AddMembership(principal, group, null, true);
             return true;
         }
 
@@ -199,6 +175,30 @@ namespace ditjson.Extractors
             {
                 memberships.Add(membership);
             }
+        }
+
+        private static bool TryAddPrimaryGroup(NtdsObject principal, int primaryGroupId,
+                    Dictionary<string, Group> groupsBySid)
+        {
+            if (primaryGroupId <= 0 || string.IsNullOrEmpty(principal.ObjectSid))
+            {
+                return false;
+            }
+
+            var separator = principal.ObjectSid.LastIndexOf('-');
+            if (separator <= 0)
+            {
+                return false;
+            }
+
+            var groupSid = $"{principal.ObjectSid[..separator]}-{primaryGroupId}";
+            if (!groupsBySid.TryGetValue(groupSid, out var group))
+            {
+                return false;
+            }
+
+            AddMembership(principal, group, null, true);
+            return true;
         }
     }
 }

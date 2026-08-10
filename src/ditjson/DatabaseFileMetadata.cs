@@ -7,32 +7,44 @@ namespace ditjson
 {
     internal sealed class DatabaseFileMetadata
     {
-        [JsonPropertyName("headerChecksum")]
-        public string HeaderChecksum { get; init; } = string.Empty;
-        [JsonPropertyName("signature")]
-        public string Signature { get; init; } = string.Empty;
-        [JsonPropertyName("fileFormatVersion")]
-        public string FileFormatVersion { get; init; } = string.Empty;
-        [JsonPropertyName("fileType")]
-        public string FileType { get; init; } = string.Empty;
-        [JsonPropertyName("pageSize")]
-        public uint PageSize { get; init; }
-        [JsonPropertyName("databaseTime")]
-        public string DatabaseTime { get; init; } = string.Empty;
-        [JsonPropertyName("windowsVersion")]
-        public string WindowsVersion { get; init; } = string.Empty;
-        [JsonPropertyName("creationTime")]
-        public string? CreationTime { get; init; }
         [JsonPropertyName("attachTime")]
         public string? AttachTime { get; init; }
-        [JsonPropertyName("detachTime")]
-        public string? DetachTime { get; init; }
-        [JsonPropertyName("isDirty")]
-        public bool IsDirty { get; init; }
+
         [JsonPropertyName("consistentTime")]
         public string? ConsistentTime { get; init; }
+
+        [JsonPropertyName("creationTime")]
+        public string? CreationTime { get; init; }
+
+        [JsonPropertyName("databaseTime")]
+        public string DatabaseTime { get; init; } = string.Empty;
+
+        [JsonPropertyName("detachTime")]
+        public string? DetachTime { get; init; }
+
+        [JsonPropertyName("fileFormatVersion")]
+        public string FileFormatVersion { get; init; } = string.Empty;
+
+        [JsonPropertyName("fileType")]
+        public string FileType { get; init; } = string.Empty;
+
+        [JsonPropertyName("headerChecksum")]
+        public string HeaderChecksum { get; init; } = string.Empty;
+
+        [JsonPropertyName("isDirty")]
+        public bool IsDirty { get; init; }
+
+        [JsonPropertyName("pageSize")]
+        public uint PageSize { get; init; }
+
         [JsonPropertyName("recoveryTime")]
         public string? RecoveryTime { get; init; }
+
+        [JsonPropertyName("signature")]
+        public string Signature { get; init; } = string.Empty;
+
+        [JsonPropertyName("windowsVersion")]
+        public string WindowsVersion { get; init; } = string.Empty;
 
         public static DatabaseFileMetadata Read(string path)
         {
@@ -43,8 +55,7 @@ namespace ditjson
 
             var isDirty = header[88] == 0;
             var detachTime = isDirty ? null : ReadLogTime(header, 88);
-            return new DatabaseFileMetadata
-            {
+            return new DatabaseFileMetadata {
                 HeaderChecksum = ReadHexUInt32(header, 0),
                 Signature = ReadHexUInt32(header, 4),
                 FileFormatVersion = ReadHexUInt32(header, 8),
@@ -61,12 +72,6 @@ namespace ditjson
                 RecoveryTime = ReadLogTime(header, 244)
             };
         }
-
-        private static uint ReadUInt32(byte[] header, int offset) =>
-            BinaryPrimitives.ReadUInt32LittleEndian(header.AsSpan(offset, sizeof(uint)));
-
-        private static ulong ReadUInt64(byte[] header, int offset) =>
-            BinaryPrimitives.ReadUInt64LittleEndian(header.AsSpan(offset, sizeof(ulong)));
 
         private static string ReadHexUInt32(byte[] header, int offset) => $"0x{ReadUInt32(header, offset):X8}";
 
@@ -94,5 +99,11 @@ namespace ditjson
                 return null;
             }
         }
+
+        private static uint ReadUInt32(byte[] header, int offset) =>
+                            BinaryPrimitives.ReadUInt32LittleEndian(header.AsSpan(offset, sizeof(uint)));
+
+        private static ulong ReadUInt64(byte[] header, int offset) =>
+            BinaryPrimitives.ReadUInt64LittleEndian(header.AsSpan(offset, sizeof(ulong)));
     }
 }

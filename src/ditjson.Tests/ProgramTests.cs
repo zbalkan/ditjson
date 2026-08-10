@@ -133,19 +133,6 @@ public class ProgramTests
     }
 
     [TestMethod]
-    public void Parser_AcceptsTimelineFlag()
-    {
-        Options? parsed = null;
-
-        new Parser(settings => settings.HelpWriter = TextWriter.Null)
-            .ParseArguments<Options>(["ntds.dit", "--timeline"])
-            .WithParsed(options => parsed = options);
-
-        Assert.IsNotNull(parsed);
-        Assert.IsTrue(parsed.Timeline);
-    }
-
-    [TestMethod]
     public void Parser_AcceptsSystemAndOutputArguments()
     {
         Options? parsed = null;
@@ -161,54 +148,16 @@ public class ProgramTests
     }
 
     [TestMethod]
-    public void WriteOutput_WithDestination_WritesFileInsteadOfStdout()
+    public void Parser_AcceptsTimelineFlag()
     {
-        var directory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-        var output = Path.Combine(directory, "output.json");
-        Directory.CreateDirectory(directory);
-        var stdout = new StringWriter();
-        var originalOut = Console.Out;
-        try
-        {
-            Console.SetOut(stdout);
-            Program.WriteOutput("{\"users\":[]}", output);
+        Options? parsed = null;
 
-            Assert.AreEqual(string.Empty, stdout.ToString());
-            Assert.AreEqual("{\"users\":[]}", File.ReadAllText(output));
-        }
-        finally
-        {
-            Console.SetOut(originalOut);
-            Directory.Delete(directory, true);
-        }
-    }
+        new Parser(settings => settings.HelpWriter = TextWriter.Null)
+            .ParseArguments<Options>(["ntds.dit", "--timeline"])
+            .WithParsed(options => parsed = options);
 
-    [TestMethod]
-    public void WriteOutput_WithInvalidDestination_Throws()
-    {
-        var missingDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString(), "output.json");
-
-        Assert.ThrowsExactly<DirectoryNotFoundException>(() =>
-            Program.WriteOutput("{}", missingDirectory));
-    }
-
-    [TestMethod]
-    public void WriteOutput_WithoutDestination_WritesOnlyValidJsonToStdout()
-    {
-        var stdout = new StringWriter();
-        var originalOut = Console.Out;
-        try
-        {
-            Console.SetOut(stdout);
-            Program.WriteOutput("{\"users\":[]}", null);
-        }
-        finally
-        {
-            Console.SetOut(originalOut);
-        }
-
-        using var document = JsonDocument.Parse(stdout.ToString());
-        Assert.AreEqual(JsonValueKind.Array, document.RootElement.GetProperty("users").ValueKind);
+        Assert.IsNotNull(parsed);
+        Assert.IsTrue(parsed.Timeline);
     }
 
     [TestMethod]
@@ -260,5 +209,56 @@ public class ProgramTests
         }
 
         Assert.Contains("verify that the NTDS.dit and SYSTEM hive are a matching pair", stderr.ToString());
+    }
+
+    [TestMethod]
+    public void WriteOutput_WithDestination_WritesFileInsteadOfStdout()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        var output = Path.Combine(directory, "output.json");
+        Directory.CreateDirectory(directory);
+        var stdout = new StringWriter();
+        var originalOut = Console.Out;
+        try
+        {
+            Console.SetOut(stdout);
+            Program.WriteOutput("{\"users\":[]}", output);
+
+            Assert.AreEqual(string.Empty, stdout.ToString());
+            Assert.AreEqual("{\"users\":[]}", File.ReadAllText(output));
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+            Directory.Delete(directory, true);
+        }
+    }
+
+    [TestMethod]
+    public void WriteOutput_WithInvalidDestination_Throws()
+    {
+        var missingDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString(), "output.json");
+
+        Assert.ThrowsExactly<DirectoryNotFoundException>(() =>
+            Program.WriteOutput("{}", missingDirectory));
+    }
+
+    [TestMethod]
+    public void WriteOutput_WithoutDestination_WritesOnlyValidJsonToStdout()
+    {
+        var stdout = new StringWriter();
+        var originalOut = Console.Out;
+        try
+        {
+            Console.SetOut(stdout);
+            Program.WriteOutput("{\"users\":[]}", null);
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+        }
+
+        using var document = JsonDocument.Parse(stdout.ToString());
+        Assert.AreEqual(JsonValueKind.Array, document.RootElement.GetProperty("users").ValueKind);
     }
 }

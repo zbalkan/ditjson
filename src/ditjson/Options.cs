@@ -13,11 +13,11 @@ namespace ditjson
         [Option('o', "output", Required = false, HelpText = "Write JSON to a file instead of stdout")]
         public string? Output { get; set; }
 
-        [Option('t', "timeline", Required = false,
-            HelpText = "Write a chronological JSON timeline instead of structured objects")]
-        public bool Timeline { get; set; }
-
         [Value(1, MetaName = "SYSTEM", Required = false, HelpText = "Optional matching SYSTEM registry hive")]
         public string? System { get; set; }
+
+        [Option('t', "timeline", Required = false,
+                    HelpText = "Write a chronological JSON timeline instead of structured objects")]
+        public bool Timeline { get; set; }
     }
 }

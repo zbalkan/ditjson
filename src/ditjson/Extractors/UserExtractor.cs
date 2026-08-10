@@ -1,18 +1,20 @@
 using System;
 using System.Collections.Generic;
-using Microsoft.Isam.Esent.Interop;
-using ditjson.Models;
 using ditjson.Decoders;
+using ditjson.Models;
+using Microsoft.Isam.Esent.Interop;
 
 namespace ditjson.Extractors
 {
     internal static class UserExtractor
     {
+        internal static string? EncodeBinary(byte[]? value) =>
+            value == null || value.Length == 0 ? null : Convert.ToBase64String(value);
+
         internal static User ExtractUser(Session session, JET_TABLEID table, int recordId,
-            IDictionary<string, JET_COLUMNID> columnDict)
+                    IDictionary<string, JET_COLUMNID> columnDict)
         {
-            var user = new User
-            {
+            var user = new User {
                 RecordId = recordId,
                 Name = ColumnExtractor.GetString(session, table, columnDict, NtdsColumnNames.ObjectName)!,
                 ObjectClass = "user",
@@ -81,8 +83,5 @@ namespace ditjson.Extractors
 
             return user;
         }
-
-        internal static string? EncodeBinary(byte[]? value) =>
-            value == null || value.Length == 0 ? null : Convert.ToBase64String(value);
     }
 }

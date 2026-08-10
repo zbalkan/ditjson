@@ -45,8 +45,24 @@ namespace ditjson.Extractors
             }
         }
 
+        internal static List<string> ParsePasswordHistory(byte[] data, IReadOnlyList<byte[]> peks, uint rid)
+        {
+            var hashes = new List<string>();
+            var plain = CredentialCrypto.RemoveRidDesLayer(CredentialCrypto.UnwrapAttribute(data, peks), rid);
+            // ntPwdHistory/lmPwdHistory contain the current value at index zero.
+            // It is already represented by passwordHashes, so only expose prior
+            // values here. Preserve zero entries after it to keep LM/NT indices
+            // aligned without duplicating the current hashes in the JSON.
+            for (var offset = 16; offset + 16 <= plain.Length; offset += 16)
+            {
+                var hashData = plain.AsSpan(offset, 16).ToArray();
+                hashes.Add(Convert.ToHexString(hashData));
+            }
+            return hashes;
+        }
+
         private static void ExtractHistoryForUser(Session session, JET_TABLEID table,
-            IDictionary<string, JET_COLUMNID> columnDict, User user, IReadOnlyList<byte[]> peks)
+                    IDictionary<string, JET_COLUMNID> columnDict, User user, IReadOnlyList<byte[]> peks)
         {
             try
             {
@@ -82,22 +98,6 @@ namespace ditjson.Extractors
             {
                 Console.Error.WriteLine($"[!] Error extracting password history for user {user.SamAccountName}: {ex.Message}");
             }
-        }
-
-        internal static List<string> ParsePasswordHistory(byte[] data, IReadOnlyList<byte[]> peks, uint rid)
-        {
-            var hashes = new List<string>();
-            var plain = CredentialCrypto.RemoveRidDesLayer(CredentialCrypto.UnwrapAttribute(data, peks), rid);
-            // ntPwdHistory/lmPwdHistory contain the current value at index zero.
-            // It is already represented by passwordHashes, so only expose prior
-            // values here. Preserve zero entries after it to keep LM/NT indices
-            // aligned without duplicating the current hashes in the JSON.
-            for (var offset = 16; offset + 16 <= plain.Length; offset += 16)
-            {
-                var hashData = plain.AsSpan(offset, 16).ToArray();
-                hashes.Add(Convert.ToHexString(hashData));
-            }
-            return hashes;
         }
     }
 }

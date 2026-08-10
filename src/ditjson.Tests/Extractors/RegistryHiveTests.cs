@@ -24,6 +24,22 @@ public sealed class RegistryHiveTests
     }
 
     [TestMethod]
+    public void OpenKey_ThrowsForMissingKey()
+    {
+        var path = CreateHive();
+        try
+        {
+            using var hive = new RegistryHive(path);
+
+            Assert.ThrowsExactly<KeyNotFoundException>(() => hive.OpenKey(@"Software\Missing"));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [TestMethod]
     public void OpenKey_UsesLhHashes()
     {
         var path = CreateHive();
@@ -33,22 +49,6 @@ public sealed class RegistryHiveTests
 
             Assert.AreEqual(0x200, hive.OpenKey("Software"));
             Assert.AreEqual(0x200, hive.OpenKey("software"));
-        }
-        finally
-        {
-            File.Delete(path);
-        }
-    }
-
-    [TestMethod]
-    public void OpenKey_ThrowsForMissingKey()
-    {
-        var path = CreateHive();
-        try
-        {
-            using var hive = new RegistryHive(path);
-
-            Assert.ThrowsExactly<KeyNotFoundException>(() => hive.OpenKey(@"Software\Missing"));
         }
         finally
         {
@@ -74,6 +74,17 @@ public sealed class RegistryHiveTests
         }
     }
 
+    private static uint ComputeLhHash(string name)
+    {
+        uint hash = 0;
+        foreach (var character in name)
+        {
+            hash = hash * 37 + char.ToUpperInvariant(character);
+        }
+
+        return hash;
+    }
+
     private static string CreateHive()
     {
         const int hbin = 0x1000;
@@ -97,8 +108,14 @@ public sealed class RegistryHiveTests
         return path;
     }
 
+    private static void WriteAscii(byte[] destination, int offset, string value) =>
+        Encoding.ASCII.GetBytes(value).CopyTo(destination, offset);
+
+    private static void WriteInt32(byte[] destination, int offset, int value) =>
+        BinaryPrimitives.WriteInt32LittleEndian(destination.AsSpan(offset), value);
+
     private static void WriteKey(byte[] hive, int hbin, int cell, string name, bool compressed, int subkeyList,
-        int classCell = -1, int valueList = -1)
+                int classCell = -1, int valueList = -1)
     {
         var at = hbin + cell + 4;
         WriteAscii(hive, at, "nk");
@@ -126,16 +143,11 @@ public sealed class RegistryHiveTests
         }
     }
 
-    private static uint ComputeLhHash(string name)
-    {
-        uint hash = 0;
-        foreach (var character in name)
-        {
-            hash = hash * 37 + char.ToUpperInvariant(character);
-        }
+    private static void WriteUInt16(byte[] destination, int offset, ushort value) =>
+        BinaryPrimitives.WriteUInt16LittleEndian(destination.AsSpan(offset), value);
 
-        return hash;
-    }
+    private static void WriteUInt32(byte[] destination, int offset, uint value) =>
+        BinaryPrimitives.WriteUInt32LittleEndian(destination.AsSpan(offset), value);
 
     private static void WriteValue(byte[] hive, int hbin, int cell, string name, byte[] value)
     {
@@ -147,16 +159,4 @@ public sealed class RegistryHiveTests
         WriteUInt16(hive, at + 0x10, 1);
         WriteAscii(hive, at + 0x14, name);
     }
-
-    private static void WriteAscii(byte[] destination, int offset, string value) =>
-        Encoding.ASCII.GetBytes(value).CopyTo(destination, offset);
-
-    private static void WriteUInt16(byte[] destination, int offset, ushort value) =>
-        BinaryPrimitives.WriteUInt16LittleEndian(destination.AsSpan(offset), value);
-
-    private static void WriteUInt32(byte[] destination, int offset, uint value) =>
-        BinaryPrimitives.WriteUInt32LittleEndian(destination.AsSpan(offset), value);
-
-    private static void WriteInt32(byte[] destination, int offset, int value) =>
-        BinaryPrimitives.WriteInt32LittleEndian(destination.AsSpan(offset), value);
 }

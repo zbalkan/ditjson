@@ -55,8 +55,7 @@ namespace ditjson
         {
             var values = new List<string>();
 
-            var retrievecolumn = new JET_RETRIEVECOLUMN
-            {
+            var retrievecolumn = new JET_RETRIEVECOLUMN {
                 columnid = columnId,
                 itagSequence = 0
             };

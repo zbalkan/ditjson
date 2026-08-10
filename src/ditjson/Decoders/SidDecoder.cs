@@ -6,20 +6,57 @@ namespace ditjson.Decoders
 {
     internal static class SidDecoder
     {
-        // Manual binary SID parsing instead of System.Security.Principal.SecurityIdentifier,
-        // which throws PlatformNotSupportedException on non-Windows platforms.
-        internal static string? Decode(byte[]? sidBytes)
+        /// <summary>
+        /// Manual binary SID parsing instead of System.Security.Principal.SecurityIdentifier,
+        /// which throws PlatformNotSupportedException on non-Windows platforms.
+        /// </summary>
+        /// <param name="sidBytes">SID to translate</param>
+        /// <returns></returns>
+        internal static string? Decode(byte[]? sidBytes) => Decode(sidBytes, ntdsSubAuthorities: false);
+
+        internal static string? Decode(string hexValue)
         {
-            return Decode(sidBytes, ntdsSubAuthorities: false);
+            if (string.IsNullOrEmpty(hexValue))
+            {
+                return null;
+            }
+
+            try
+            {
+                var bytes = HexToBytes(hexValue);
+                if (bytes?.Length >= 12 && bytes[1] > 0 &&
+                    bytes[2] == 0 && bytes[3] == 0 && bytes[4] == 0 &&
+                    bytes[5] == 0 && bytes[6] == 0 && bytes[7] == 0)
+                {
+                    // Accept legacy hex values that stored the identifier
+                    // authority as a little-endian 32-bit value.
+                    var authority = BitConverter.ToUInt32(bytes, 8);
+                    if (authority > 0 && authority <= byte.MaxValue)
+                    {
+                        var normalized = new byte[bytes.Length - 4];
+                        normalized[0] = bytes[0];
+                        normalized[1] = (byte)(bytes[1] - 1);
+                        normalized[7] = (byte)authority;
+                        Array.Copy(bytes, 12, normalized, 8, bytes.Length - 12);
+                        bytes = normalized;
+                    }
+                }
+                return Decode(bytes);
+            }
+            catch
+            {
+                return null;
+            }
         }
 
-        // The ESE representation used by the ATTr objectSid column stores
-        // each sub-authority most-significant byte first. This differs from
-        // the little-endian self-relative SID returned by Win32 APIs.
-        internal static string? DecodeNtds(byte[]? sidBytes)
-        {
-            return Decode(sidBytes, ntdsSubAuthorities: true);
-        }
+        /// <summary>
+        /// The ESE representation used by the ATTr objectSid column stores
+        /// each sub-authority most-significant byte first. This differs from
+        /// the little-endian self-relative SID returned by Win32 APIs.
+        /// </summary>
+        /// <param name="sidBytes"></param>
+        /// <returns></returns>
+        internal static string? DecodeNtds(byte[]? sidBytes) => Decode(sidBytes, ntdsSubAuthorities: true);
 
         private static string? Decode(byte[]? sidBytes, bool ntdsSubAuthorities)
         {
@@ -62,41 +99,6 @@ namespace ditjson.Decoders
                 }
 
                 return sb.ToString();
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        internal static string? Decode(string hexValue)
-        {
-            if (string.IsNullOrEmpty(hexValue))
-            {
-                return null;
-            }
-
-            try
-            {
-                var bytes = HexToBytes(hexValue);
-                if (bytes?.Length >= 12 && bytes[1] > 0 &&
-                    bytes[2] == 0 && bytes[3] == 0 && bytes[4] == 0 &&
-                    bytes[5] == 0 && bytes[6] == 0 && bytes[7] == 0)
-                {
-                    // Accept legacy hex values that stored the identifier
-                    // authority as a little-endian 32-bit value.
-                    var authority = BitConverter.ToUInt32(bytes, 8);
-                    if (authority > 0 && authority <= byte.MaxValue)
-                    {
-                        var normalized = new byte[bytes.Length - 4];
-                        normalized[0] = bytes[0];
-                        normalized[1] = (byte)(bytes[1] - 1);
-                        normalized[7] = (byte)authority;
-                        Array.Copy(bytes, 12, normalized, 8, bytes.Length - 12);
-                        bytes = normalized;
-                    }
-                }
-                return Decode(bytes);
             }
             catch
             {

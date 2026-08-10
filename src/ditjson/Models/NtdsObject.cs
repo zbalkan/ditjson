@@ -18,12 +18,15 @@ namespace ditjson.Models
         public List<GroupMembership>? MemberOf { get; set; }
         public string? OperatingSystem { get; set; }
         public string? OperatingSystemVersion { get; set; }
+
         [JsonPropertyName("passwordHashes")]
         public PasswordHashes? PasswordHashes { get; set; }
+
         public string? PasswordLastSet { get; set; }
         public int PrimaryGroupId { get; set; }
         public BitLockerRecovery? Recovery { get; set; }
         public string? SamAccountName { get; set; }
+
         [JsonPropertyName("supplementalCredentials")]
         public SupplementalCredentials? SupplementalCredentials { get; set; }
     }
@@ -102,22 +105,27 @@ namespace ditjson.Models
         public int DialInAccessPermission { get; set; }
         public string? LastLogon { get; set; }
         public string? LastLogonTimeStamp { get; set; }
-        public int LogonCount { get; set; }
-        public List<GroupMembership>? MemberOf { get; set; }
-        [JsonPropertyName("passwordHashes")]
-        public PasswordHashes? PasswordHashes { get; set; }
 
         [JsonPropertyName("lmPasswordHistory")]
         public List<string>? LmPasswordHistory { get; set; }
 
+        public int LogonCount { get; set; }
+        public List<GroupMembership>? MemberOf { get; set; }
+
+        [JsonPropertyName("passwordHashes")]
+        public PasswordHashes? PasswordHashes { get; set; }
+
         [JsonPropertyName("passwordHistory")]
         public List<string>? PasswordHistory { get; set; }
+
         public string? PasswordLastSet { get; set; }
         public int PrimaryGroupId { get; set; }
         public string? SamAccountName { get; set; }
         public string? SamAccountType { get; set; }
+
         [JsonPropertyName("supplementalCredentials")]
         public SupplementalCredentials? SupplementalCredentials { get; set; }
+
         public List<string>? UserAccountControl { get; set; }
         public string? UserPrincipalName { get; set; }
     }

@@ -8,12 +8,31 @@ namespace ditjson.Extractors
 {
     internal static class PasswordHashDecryptor
     {
+        internal static byte[] DecryptHash(byte[] encryptedHash, IReadOnlyList<byte[]> peks, uint rid) =>
+            CredentialCrypto.RemoveRidDesLayer(CredentialCrypto.UnwrapAttribute(encryptedHash, peks), rid);
+
         internal static void DecryptPasswordHashes(Session session, JET_DBID dbid, List<User> users, List<Computer> computers,
-            IReadOnlyList<byte[]> peks)
+                    IReadOnlyList<byte[]> peks)
         {
             Console.Error.WriteLine("[*] Decrypting password hashes...");
             DecryptUserHashes(session, dbid, users, peks);
             DecryptComputerHashes(session, dbid, computers, peks);
+        }
+
+        internal static uint GetRid(string? sid)
+        {
+            if (string.IsNullOrWhiteSpace(sid))
+            {
+                throw new InvalidOperationException("Credential-bearing object has no SID");
+            }
+
+            var separator = sid.LastIndexOf('-');
+            if (separator < 0 || !uint.TryParse(sid.AsSpan(separator + 1), out var rid))
+            {
+                throw new InvalidOperationException($"Invalid SID: {sid}");
+            }
+
+            return rid;
         }
 
         private static void DecryptComputerHashes(Session session, JET_DBID dbid, List<Computer> computers, IReadOnlyList<byte[]> peks)
@@ -50,25 +69,6 @@ namespace ditjson.Extractors
                 Console.Error.WriteLine($"[!] Error decrypting computer hashes: {ex.GetType().Name}: {ex.Message}");
             }
         }
-
-        internal static uint GetRid(string? sid)
-        {
-            if (string.IsNullOrWhiteSpace(sid))
-            {
-                throw new InvalidOperationException("Credential-bearing object has no SID");
-            }
-
-            var separator = sid.LastIndexOf('-');
-            if (separator < 0 || !uint.TryParse(sid.AsSpan(separator + 1), out var rid))
-            {
-                throw new InvalidOperationException($"Invalid SID: {sid}");
-            }
-
-            return rid;
-        }
-
-        internal static byte[] DecryptHash(byte[] encryptedHash, IReadOnlyList<byte[]> peks, uint rid) =>
-            CredentialCrypto.RemoveRidDesLayer(CredentialCrypto.UnwrapAttribute(encryptedHash, peks), rid);
 
         private static void DecryptHashesForComputer(Session session, JET_TABLEID table,
             IDictionary<string, JET_COLUMNID> columnDict, Computer computer, IReadOnlyList<byte[]> peks)

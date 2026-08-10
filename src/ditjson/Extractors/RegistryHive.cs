@@ -6,18 +6,19 @@ using System.Text;
 
 namespace ditjson.Extractors
 {
+    /// <summary>
     /// A deliberately small, read-only regf parser for key navigation, class names and values.
+    /// </summary>
     internal sealed class RegistryHive : IDisposable
     {
         private const int HbinBase = 0x1000;
-        private const uint Regf = (uint)('r' | ('e' << 8) | ('g' << 16) | ('f' << 24));
-        private const ushort Nk = (ushort)('n' | ('k' << 8));
-        private const ushort Vk = (ushort)('v' | ('k' << 8));
-        private const ushort Li = (ushort)('l' | ('i' << 8));
         private const ushort Lf = (ushort)('l' | ('f' << 8));
         private const ushort Lh = (ushort)('l' | ('h' << 8));
+        private const ushort Li = (ushort)('l' | ('i' << 8));
+        private const ushort Nk = (ushort)('n' | ('k' << 8));
+        private const uint Regf = (uint)('r' | ('e' << 8) | ('g' << 16) | ('f' << 24));
         private const ushort Ri = (ushort)('r' | ('i' << 8));
-
+        private const ushort Vk = (ushort)('v' | ('k' << 8));
         private readonly FileStream stream;
 
         internal RegistryHive(string path)
@@ -38,6 +39,8 @@ namespace ditjson.Extractors
         }
 
         internal int RootCell => ReadInt32(0x24);
+
+        public void Dispose() => stream.Dispose();
 
         internal int OpenKey(string path)
         {
@@ -67,58 +70,45 @@ namespace ditjson.Extractors
                 : Encoding.Unicode.GetString(ReadBytes(Payload(offset), length)).TrimEnd('\0');
         }
 
-        internal byte[]? ReadValue(int keyCell, string name)
-        {
-            return TryFindValueData(keyCell, name, out var offset, out var length)
+        internal byte[]? ReadValue(int keyCell, string name) => TryFindValueData(keyCell, name, out var offset, out var length)
                 ? ReadBytes(offset, length)
                 : null;
-        }
 
-        private bool TryFindValueData(int keyCell, string name, out long dataOffset, out int length)
+        private static long Absolute(int relative) => HbinBase + (long)relative;
+
+        private static bool CharactersEqualIgnoreCase(char left, char right) => left == right || char.ToUpperInvariant(left) == char.ToUpperInvariant(right);
+
+        private static uint ComputeLhHash(string name)
         {
-            RequireSignature(keyCell, Nk, "nk");
-            var count = ReadInt32(Payload(keyCell) + 0x24);
-            var list = ReadInt32(Payload(keyCell) + 0x28);
-            for (var i = 0; count > 0 && list >= 0 && i < count; i++)
+            uint hash = 0;
+            foreach (var character in name)
             {
-                var valueCell = ReadInt32(Payload(list) + i * 4);
-                RequireSignature(valueCell, Vk, "vk");
-                var at = Payload(valueCell);
-                var nameLength = ReadUInt16(at + 2);
-                var ascii = (ReadUInt16(at + 0x10) & 1) != 0;
-                if (!NameEquals(at + 0x14, nameLength, ascii, name))
-                {
-                    continue;
-                }
-
-                var rawLength = ReadUInt32(at + 4);
-                length = (int)(rawLength & 0x7fffffff);
-                var offsetField = at + 8;
-                if ((rawLength & 0x80000000) != 0)
-                {
-                    dataOffset = offsetField;
-                    length = Math.Min(length, 4);
-                }
-                else
-                {
-                    dataOffset = Payload(ReadInt32(offsetField));
-                }
-
-                return true;
+                hash = hash * 37 + char.ToUpperInvariant(character);
             }
 
-            dataOffset = default;
-            length = default;
-            return false;
+            return hash;
         }
 
-        private int FindSubkey(int keyCell, string name)
+        private static bool LfHintMatches(uint hint, string name)
         {
-            RequireSignature(keyCell, Nk, "nk");
-            var count = ReadInt32(Payload(keyCell) + 0x14);
-            var list = ReadInt32(Payload(keyCell) + 0x1c);
-            return count <= 0 || list < 0 ? -1 : FindInSubkeyList(list, name);
+            for (var i = 0; i < 4; i++)
+            {
+                var character = i < name.Length ? char.ToUpperInvariant(name[i]) : '\0';
+                if (character > byte.MaxValue)
+                {
+                    return true;
+                }
+
+                if (char.ToUpperInvariant((char)(byte)(hint >> (i * 8))) != character)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
+
+        private static long Payload(int relative) => Absolute(relative) + sizeof(int);
 
         private int FindInSubkeyList(int listCell, string name)
         {
@@ -168,6 +158,14 @@ namespace ditjson.Extractors
             return -1;
         }
 
+        private int FindSubkey(int keyCell, string name)
+        {
+            RequireSignature(keyCell, Nk, "nk");
+            var count = ReadInt32(Payload(keyCell) + 0x14);
+            var list = ReadInt32(Payload(keyCell) + 0x1c);
+            return count <= 0 || list < 0 ? -1 : FindInSubkeyList(list, name);
+        }
+
         private bool KeyNameEquals(int cell, string requestedName)
         {
             RequireSignature(cell, Nk, "nk");
@@ -175,36 +173,6 @@ namespace ditjson.Extractors
             var length = ReadUInt16(at + 0x48);
             var ascii = (ReadUInt16(at + 2) & 0x20) != 0;
             return NameEquals(at + 0x4c, length, ascii, requestedName);
-        }
-
-        private static uint ComputeLhHash(string name)
-        {
-            uint hash = 0;
-            foreach (var character in name)
-            {
-                hash = hash * 37 + char.ToUpperInvariant(character);
-            }
-
-            return hash;
-        }
-
-        private static bool LfHintMatches(uint hint, string name)
-        {
-            for (var i = 0; i < 4; i++)
-            {
-                var character = i < name.Length ? char.ToUpperInvariant(name[i]) : '\0';
-                if (character > byte.MaxValue)
-                {
-                    return true;
-                }
-
-                if (char.ToUpperInvariant((char)(byte)(hint >> (i * 8))) != character)
-                {
-                    return false;
-                }
-            }
-
-            return true;
         }
 
         private bool NameEquals(long offset, int byteLength, bool ascii, string requestedName)
@@ -228,23 +196,6 @@ namespace ditjson.Extractors
             return true;
         }
 
-        private static bool CharactersEqualIgnoreCase(char left, char right)
-        {
-            return left == right || char.ToUpperInvariant(left) == char.ToUpperInvariant(right);
-        }
-
-        private void RequireSignature(int cell, ushort expected, string name)
-        {
-            if (cell < 0 || ReadUInt16(Payload(cell)) != expected)
-            {
-                throw new InvalidDataException($"Invalid {name} cell");
-            }
-        }
-
-        private static long Absolute(int relative) => HbinBase + (long)relative;
-
-        private static long Payload(int relative) => Absolute(relative) + sizeof(int);
-
         private byte[] ReadBytes(long offset, int count)
         {
             var result = new byte[count];
@@ -267,6 +218,13 @@ namespace ditjson.Extractors
             }
         }
 
+        private int ReadInt32(long offset)
+        {
+            Span<byte> buffer = stackalloc byte[sizeof(int)];
+            ReadExactly(offset, buffer);
+            return BinaryPrimitives.ReadInt32LittleEndian(buffer);
+        }
+
         private ushort ReadUInt16(long offset)
         {
             Span<byte> buffer = stackalloc byte[sizeof(ushort)];
@@ -281,13 +239,50 @@ namespace ditjson.Extractors
             return BinaryPrimitives.ReadUInt32LittleEndian(buffer);
         }
 
-        private int ReadInt32(long offset)
+        private void RequireSignature(int cell, ushort expected, string name)
         {
-            Span<byte> buffer = stackalloc byte[sizeof(int)];
-            ReadExactly(offset, buffer);
-            return BinaryPrimitives.ReadInt32LittleEndian(buffer);
+            if (cell < 0 || ReadUInt16(Payload(cell)) != expected)
+            {
+                throw new InvalidDataException($"Invalid {name} cell");
+            }
         }
 
-        public void Dispose() => stream.Dispose();
+        private bool TryFindValueData(int keyCell, string name, out long dataOffset, out int length)
+        {
+            RequireSignature(keyCell, Nk, "nk");
+            var count = ReadInt32(Payload(keyCell) + 0x24);
+            var list = ReadInt32(Payload(keyCell) + 0x28);
+            for (var i = 0; count > 0 && list >= 0 && i < count; i++)
+            {
+                var valueCell = ReadInt32(Payload(list) + i * 4);
+                RequireSignature(valueCell, Vk, "vk");
+                var at = Payload(valueCell);
+                var nameLength = ReadUInt16(at + 2);
+                var ascii = (ReadUInt16(at + 0x10) & 1) != 0;
+                if (!NameEquals(at + 0x14, nameLength, ascii, name))
+                {
+                    continue;
+                }
+
+                var rawLength = ReadUInt32(at + 4);
+                length = (int)(rawLength & 0x7fffffff);
+                var offsetField = at + 8;
+                if ((rawLength & 0x80000000) != 0)
+                {
+                    dataOffset = offsetField;
+                    length = Math.Min(length, 4);
+                }
+                else
+                {
+                    dataOffset = Payload(ReadInt32(offsetField));
+                }
+
+                return true;
+            }
+
+            dataOffset = default;
+            length = default;
+            return false;
+        }
     }
 }

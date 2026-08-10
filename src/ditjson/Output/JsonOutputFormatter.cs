@@ -9,8 +9,7 @@ namespace ditjson.Output
 {
     internal static class JsonOutputFormatter
     {
-        private static readonly StructuredOutputJsonContext JsonContext = new(new JsonSerializerOptions
-        {
+        private static readonly StructuredOutputJsonContext JsonContext = new(new JsonSerializerOptions {
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
             WriteIndented = true,
             Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
@@ -19,10 +18,8 @@ namespace ditjson.Output
         public static string FormatStructuredOutput(List<User> users, List<Group> groups,
             List<Computer> computers, DatabaseFileMetadata? database = null)
         {
-            var output = new StructuredOutput
-            {
-                Metadata = new ExportMetadata
-                {
+            var output = new StructuredOutput {
+                Metadata = new ExportMetadata {
                     ExportDate = DateTime.UtcNow.ToString("O"),
                     DitjsonVersion = "1.0.2",
                     TotalUsers = users.Count,
@@ -68,8 +65,7 @@ namespace ditjson.Output
                 return;
             }
 
-            events.Add(new TimelineEvent
-            {
+            events.Add(new TimelineEvent {
                 Timestamp = timestamp,
                 Event = action,
                 RecordId = item.RecordId,
@@ -81,6 +77,9 @@ namespace ditjson.Output
 
     internal sealed class ExportMetadata
     {
+        [JsonPropertyName("database")]
+        public DatabaseFileMetadata? Database { get; set; }
+
         [JsonPropertyName("ditjsonVersion")]
         public string DitjsonVersion { get; set; } = string.Empty;
 
@@ -95,9 +94,6 @@ namespace ditjson.Output
 
         [JsonPropertyName("totalUsers")]
         public int TotalUsers { get; set; }
-
-        [JsonPropertyName("database")]
-        public DatabaseFileMetadata? Database { get; set; }
     }
 
     internal sealed class StructuredOutput
@@ -113,24 +109,6 @@ namespace ditjson.Output
 
         [JsonPropertyName("users")]
         public List<User> Users { get; set; } = new();
-    }
-
-    internal sealed class TimelineEvent
-    {
-        [JsonPropertyName("timestamp")]
-        public string Timestamp { get; set; } = string.Empty;
-
-        [JsonPropertyName("event")]
-        public string Event { get; set; } = string.Empty;
-
-        [JsonPropertyName("recordId")]
-        public int RecordId { get; set; }
-
-        [JsonPropertyName("objectName")]
-        public string? ObjectName { get; set; }
-
-        [JsonPropertyName("objectType")]
-        public string? ObjectType { get; set; }
     }
 
     [JsonSourceGenerationOptions(
@@ -151,5 +129,23 @@ namespace ditjson.Output
     [JsonSerializable(typeof(List<TimelineEvent>))]
     internal partial class StructuredOutputJsonContext : JsonSerializerContext
     {
+    }
+
+    internal sealed class TimelineEvent
+    {
+        [JsonPropertyName("event")]
+        public string Event { get; set; } = string.Empty;
+
+        [JsonPropertyName("objectName")]
+        public string? ObjectName { get; set; }
+
+        [JsonPropertyName("objectType")]
+        public string? ObjectType { get; set; }
+
+        [JsonPropertyName("recordId")]
+        public int RecordId { get; set; }
+
+        [JsonPropertyName("timestamp")]
+        public string Timestamp { get; set; } = string.Empty;
     }
 }

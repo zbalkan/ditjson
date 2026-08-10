@@ -23,6 +23,16 @@ public class ObjectFilterTests
     }
 
     [TestMethod]
+    public void CleanupGroup_WithEmptyMemberOf_SetsToNullWhenExcludingEmpty()
+    {
+        var group = new Group { MemberOf = [] };
+
+        ObjectFilter.CleanupGroup(group, false);
+
+        Assert.IsNull(group.MemberOf);
+    }
+
+    [TestMethod]
     public void CleanupGroup_WithEmptyMembers_SetsToNullWhenExcludingEmpty()
     {
         // Arrange
@@ -36,16 +46,6 @@ public class ObjectFilterTests
 
         // Assert
         Assert.IsNull(group.Members);
-    }
-
-    [TestMethod]
-    public void CleanupGroup_WithEmptyMemberOf_SetsToNullWhenExcludingEmpty()
-    {
-        var group = new Group { MemberOf = [] };
-
-        ObjectFilter.CleanupGroup(group, false);
-
-        Assert.IsNull(group.MemberOf);
     }
 
     [TestMethod]

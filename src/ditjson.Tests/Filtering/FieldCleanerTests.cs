@@ -7,11 +7,22 @@ namespace ditjson.Tests.Filtering;
 public class FieldCleanerTests
 {
     [TestMethod]
+    public void CleanComputer_WithEmptyObjectSid_SetsToNull()
+    {
+        var computer = new Computer {
+            ObjectSid = string.Empty
+        };
+
+        FieldCleaner.CleanComputer(computer);
+
+        Assert.IsNull(computer.ObjectSid);
+    }
+
+    [TestMethod]
     public void CleanComputer_WithNegativeIntegers_ResetsToZero()
     {
         // Arrange
-        var computer = new Computer
-        {
+        var computer = new Computer {
             DialInAccessPermission = -5
         };
 
@@ -31,8 +42,7 @@ public class FieldCleanerTests
     public void CleanComputer_WithWhitespaceStrings_ConvertsToNull()
     {
         // Arrange
-        var computer = new Computer
-        {
+        var computer = new Computer {
             Name = "   ",
             DnsHostName = "\t",
             OperatingSystem = "  \n  ",
@@ -50,19 +60,6 @@ public class FieldCleanerTests
     }
 
     [TestMethod]
-    public void CleanComputer_WithEmptyObjectSid_SetsToNull()
-    {
-        var computer = new Computer
-        {
-            ObjectSid = string.Empty
-        };
-
-        FieldCleaner.CleanComputer(computer);
-
-        Assert.IsNull(computer.ObjectSid);
-    }
-
-    [TestMethod]
     public void CleanGroup_WithNullObject_Handles() =>
         // Act & Assert (should not throw)
         FieldCleaner.CleanGroup(null);
@@ -71,8 +68,7 @@ public class FieldCleanerTests
     public void CleanGroup_WithWhitespaceStrings_ConvertsToNull()
     {
         // Arrange
-        var group = new Group
-        {
+        var group = new Group {
             Name = "  ",
             SamAccountName = "\n",
             GroupType = null
@@ -92,8 +88,7 @@ public class FieldCleanerTests
     {
         // Arrange
 #pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
-        var user = new User
-        {
+        var user = new User {
             UserAccountControl = ["SCRIPT", "", "ACCOUNTDISABLE", null, "   "]
         };
 #pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
@@ -112,8 +107,7 @@ public class FieldCleanerTests
     public void CleanUser_WithEmptyUserAccountControl_SetsToNull()
     {
         // Arrange
-        var user = new User
-        {
+        var user = new User {
             UserAccountControl = []
         };
 
@@ -128,8 +122,7 @@ public class FieldCleanerTests
     public void CleanUser_WithNegativeIntegers_ResetsToZero()
     {
         // Arrange
-        var user = new User
-        {
+        var user = new User {
             PrimaryGroupId = -1,
             LogonCount = -5,
             BadPwdCount = -10,
@@ -155,8 +148,7 @@ public class FieldCleanerTests
     public void CleanUser_WithNullUserAccountControl_Handles()
     {
         // Arrange
-        var user = new User
-        {
+        var user = new User {
             UserAccountControl = null
         };
 
@@ -169,8 +161,7 @@ public class FieldCleanerTests
     public void CleanUser_WithPositiveIntegers_KeepsValues()
     {
         // Arrange
-        var user = new User
-        {
+        var user = new User {
             PrimaryGroupId = 513,
             LogonCount = 42,
             BadPwdCount = 5
@@ -189,8 +180,7 @@ public class FieldCleanerTests
     public void CleanUser_WithValidStrings_KeepsOriginalValues()
     {
         // Arrange
-        var user = new User
-        {
+        var user = new User {
             Name = "John Doe",
             SamAccountName = "jdoe",
             UserPrincipalName = "jdoe@example.com"
@@ -209,8 +199,7 @@ public class FieldCleanerTests
     public void CleanUser_WithWhitespaceStrings_ConvertsToNull()
     {
         // Arrange
-        var user = new User
-        {
+        var user = new User {
             Name = "   ",
             SamAccountName = "\t",
             UserPrincipalName = null,

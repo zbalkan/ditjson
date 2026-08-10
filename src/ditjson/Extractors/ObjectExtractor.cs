@@ -146,18 +146,17 @@ namespace ditjson.Extractors
         }
 
         private static NtdsObject ExtractDirectoryReference(Session session, JET_TABLEID table,
-            IDictionary<string, JET_COLUMNID> columns, int recordId, int samAccountType) => new()
-        {
-            RecordId = recordId,
-            Name = ColumnExtractor.GetString(session, table, columns, NtdsColumnNames.ObjectName),
-            ObjectGuid = GuidDecoder.Decode(ColumnExtractor.GetBinary(
+            IDictionary<string, JET_COLUMNID> columns, int recordId, int samAccountType) => new() {
+                RecordId = recordId,
+                Name = ColumnExtractor.GetString(session, table, columns, NtdsColumnNames.ObjectName),
+                ObjectGuid = GuidDecoder.Decode(ColumnExtractor.GetBinary(
                 session, table, columns, NtdsColumnNames.ObjectGuid)),
-            ObjectSid = SidDecoder.DecodeNtds(ColumnExtractor.GetBinary(
+                ObjectSid = SidDecoder.DecodeNtds(ColumnExtractor.GetBinary(
                 session, table, columns, NtdsColumnNames.ObjectSid)),
-            ObjectClass = ObjectClassifier.IsUserObject(samAccountType) ? "user"
+                ObjectClass = ObjectClassifier.IsUserObject(samAccountType) ? "user"
                 : ObjectClassifier.IsComputerObject(samAccountType) ? "computer"
                 : ObjectClassifier.IsGroupObject(samAccountType) ? "group"
                 : "container"
-        };
+            };
     }
 }

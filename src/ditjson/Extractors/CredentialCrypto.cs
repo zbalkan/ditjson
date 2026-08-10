@@ -5,7 +5,9 @@ using System.Security.Cryptography;
 
 namespace ditjson.Extractors
 {
+    /// <summary>
     /// NTDS PEK and RID keyed cryptography shared by all credential attributes.
+    /// </summary>
     internal static class CredentialCrypto
     {
         internal static List<byte[]> DecryptPekList(byte[] blob, byte[] bootkey)
@@ -63,6 +65,54 @@ namespace ditjson.Extractors
             return keys;
         }
 
+        internal static (byte[] first, byte[] second) DeriveRidKeys(uint rid)
+        {
+            var r = BitConverter.GetBytes(rid);
+            return (TransformKey(new[] { r[0], r[1], r[2], r[3], r[0], r[1], r[2] }),
+                TransformKey(new[] { r[3], r[0], r[1], r[2], r[3], r[0], r[1] }));
+        }
+
+        internal static byte[] RemoveRidDesLayer(byte[] encrypted, uint rid)
+        {
+            if (encrypted.Length % 16 != 0)
+            {
+                throw new InvalidDataException("RID-DES ciphertext must contain 16-byte hashes");
+            }
+
+            var (key1, key2) = DeriveRidKeys(rid);
+            var result = new byte[encrypted.Length];
+            for (var offset = 0; offset < encrypted.Length; offset += 16)
+            {
+                DesDecrypt(key1, encrypted, offset, result, offset);
+                DesDecrypt(key2, encrypted, offset + 8, result, offset + 8);
+            }
+            return result;
+        }
+
+        internal static byte[] TransformKey(byte[] key)
+        {
+            if (key.Length != 7)
+            {
+                throw new ArgumentException("A DES source key is exactly seven bytes", nameof(key));
+            }
+
+            var output = new byte[8];
+            output[0] = (byte)(key[0] >> 1);
+            output[1] = (byte)(((key[0] & 1) << 6) | (key[1] >> 2));
+            output[2] = (byte)(((key[1] & 3) << 5) | (key[2] >> 3));
+            output[3] = (byte)(((key[2] & 7) << 4) | (key[3] >> 4));
+            output[4] = (byte)(((key[3] & 15) << 3) | (key[4] >> 5));
+            output[5] = (byte)(((key[4] & 31) << 2) | (key[5] >> 6));
+            output[6] = (byte)(((key[5] & 63) << 1) | (key[6] >> 7));
+            output[7] = (byte)(key[6] & 127);
+            for (var i = 0; i < output.Length; i++)
+            {
+                output[i] <<= 1;
+            }
+
+            return output;
+        }
+
         internal static byte[] UnwrapAttribute(byte[] blob, IReadOnlyList<byte[]> peks)
         {
             if (blob.Length < 24)
@@ -99,54 +149,6 @@ namespace ditjson.Extractors
             md5.AppendData(peks[(int)index]);
             md5.AppendData(material);
             return new RC4(md5.GetHashAndReset()).Decrypt(cipher);
-        }
-
-        internal static byte[] RemoveRidDesLayer(byte[] encrypted, uint rid)
-        {
-            if (encrypted.Length % 16 != 0)
-            {
-                throw new InvalidDataException("RID-DES ciphertext must contain 16-byte hashes");
-            }
-
-            var (key1, key2) = DeriveRidKeys(rid);
-            var result = new byte[encrypted.Length];
-            for (var offset = 0; offset < encrypted.Length; offset += 16)
-            {
-                DesDecrypt(key1, encrypted, offset, result, offset);
-                DesDecrypt(key2, encrypted, offset + 8, result, offset + 8);
-            }
-            return result;
-        }
-
-        internal static (byte[] first, byte[] second) DeriveRidKeys(uint rid)
-        {
-            var r = BitConverter.GetBytes(rid);
-            return (TransformKey(new[] { r[0], r[1], r[2], r[3], r[0], r[1], r[2] }),
-                TransformKey(new[] { r[3], r[0], r[1], r[2], r[3], r[0], r[1] }));
-        }
-
-        internal static byte[] TransformKey(byte[] key)
-        {
-            if (key.Length != 7)
-            {
-                throw new ArgumentException("A DES source key is exactly seven bytes", nameof(key));
-            }
-
-            var output = new byte[8];
-            output[0] = (byte)(key[0] >> 1);
-            output[1] = (byte)(((key[0] & 1) << 6) | (key[1] >> 2));
-            output[2] = (byte)(((key[1] & 3) << 5) | (key[2] >> 3));
-            output[3] = (byte)(((key[2] & 7) << 4) | (key[3] >> 4));
-            output[4] = (byte)(((key[3] & 15) << 3) | (key[4] >> 5));
-            output[5] = (byte)(((key[4] & 31) << 2) | (key[5] >> 6));
-            output[6] = (byte)(((key[5] & 63) << 1) | (key[6] >> 7));
-            output[7] = (byte)(key[6] & 127);
-            for (var i = 0; i < output.Length; i++)
-            {
-                output[i] <<= 1;
-            }
-
-            return output;
         }
 
         private static byte[] AesDecrypt(byte[] key, byte[] iv, byte[] cipher)

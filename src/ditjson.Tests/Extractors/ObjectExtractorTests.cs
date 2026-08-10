@@ -7,6 +7,18 @@ namespace ditjson.Tests.Extractors;
 public class ObjectExtractorTests
 {
     [TestMethod]
+    public void EncodeBinary_UsesBase64WithoutChangingCertificateBytes()
+    {
+        var certificate = Convert.FromHexString("30820100AABBCCDD");
+
+        var encoded = UserExtractor.EncodeBinary(certificate);
+
+        Assert.AreEqual(Convert.ToBase64String(certificate), encoded);
+        Assert.IsNull(UserExtractor.EncodeBinary(null));
+        Assert.IsNull(UserExtractor.EncodeBinary([]));
+    }
+
+    [TestMethod]
     public void ParseAncestorIds_ReadsLittleEndianDntsAndIgnoresPartialTail()
     {
         var value = new byte[] {
@@ -34,17 +46,5 @@ public class ObjectExtractorTests
         Assert.HasCount(2, user.Ancestors!);
         Assert.AreSame(domain, user.Ancestors![0]);
         Assert.AreSame(organizationalUnit, user.Ancestors[1]);
-    }
-
-    [TestMethod]
-    public void EncodeBinary_UsesBase64WithoutChangingCertificateBytes()
-    {
-        var certificate = Convert.FromHexString("30820100AABBCCDD");
-
-        var encoded = UserExtractor.EncodeBinary(certificate);
-
-        Assert.AreEqual(Convert.ToBase64String(certificate), encoded);
-        Assert.IsNull(UserExtractor.EncodeBinary(null));
-        Assert.IsNull(UserExtractor.EncodeBinary([]));
     }
 }

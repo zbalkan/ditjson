@@ -1,5 +1,5 @@
-using System.Text;
 using System.Security.Cryptography;
+using System.Text;
 using ditjson.Decoders;
 using ditjson.Extractors;
 
@@ -28,15 +28,55 @@ public class CredentialStructureTests
     }
 
     [TestMethod]
-    public void UnwrapAttribute_ReadsPekIndexFromFifthHeaderByte()
+    public void ParseSupplementalCredentialsBlob_ReadsKerberosNewerKeyOffsets()
     {
-        var blob = new byte[40];
-        blob[4] = 0;
-        blob[5] = 1;
+        const string name = "Primary:Kerberos-Newer-Keys";
+        var nameBytes = Encoding.Unicode.GetBytes(name);
+        var key = Convert.FromHexString("00112233445566778899AABBCCDDEEFF");
+        var credential = new byte[48 + key.Length];
+        BitConverter.GetBytes((ushort)1).CopyTo(credential, 4);
+        BitConverter.GetBytes(18).CopyTo(credential, 24 + 12);
+        BitConverter.GetBytes(key.Length).CopyTo(credential, 24 + 16);
+        BitConverter.GetBytes(48).CopyTo(credential, 24 + 20);
+        key.CopyTo(credential, 48);
+        var valueBytes = Encoding.ASCII.GetBytes(Convert.ToHexString(credential));
+        var blob = new byte[112 + 6 + nameBytes.Length + valueBytes.Length + 1];
+        BitConverter.GetBytes((uint)(blob.Length - 13)).CopyTo(blob, 4);
+        BitConverter.GetBytes((ushort)0x50).CopyTo(blob, 108);
+        BitConverter.GetBytes((ushort)1).CopyTo(blob, 110);
+        BitConverter.GetBytes((ushort)nameBytes.Length).CopyTo(blob, 112);
+        BitConverter.GetBytes((ushort)valueBytes.Length).CopyTo(blob, 114);
+        nameBytes.CopyTo(blob, 118);
+        valueBytes.CopyTo(blob, 118 + nameBytes.Length);
 
-        var result = CredentialCrypto.UnwrapAttribute(blob, new[] { new byte[16] });
+        var (_, keys) = SupplementalCredentialsParser.ParseSupplementalCredentialsBlob(blob);
 
-        Assert.AreEqual(16, result.Length);
+        Assert.IsNotNull(keys);
+        Assert.AreEqual(1, keys.Count);
+        Assert.AreEqual("AES256_CTS_HMAC_SHA1_96", keys[0].Algorithm);
+        Assert.AreEqual(Convert.ToHexString(key), keys[0].Key);
+    }
+
+    [TestMethod]
+    public void ParseSupplementalCredentialsBlob_ReadsUserPropertiesHeader()
+    {
+        const string name = "Primary:CLEARTEXT";
+        var nameBytes = Encoding.Unicode.GetBytes(name);
+        var cleartextBytes = Encoding.Unicode.GetBytes("Roadmap test");
+        var valueBytes = Encoding.ASCII.GetBytes(Convert.ToHexString(cleartextBytes));
+        var blob = new byte[112 + 6 + nameBytes.Length + valueBytes.Length + 1];
+        BitConverter.GetBytes((uint)(blob.Length - 13)).CopyTo(blob, 4);
+        BitConverter.GetBytes((ushort)0x50).CopyTo(blob, 108);
+        BitConverter.GetBytes((ushort)1).CopyTo(blob, 110);
+        BitConverter.GetBytes((ushort)nameBytes.Length).CopyTo(blob, 112);
+        BitConverter.GetBytes((ushort)valueBytes.Length).CopyTo(blob, 114);
+        nameBytes.CopyTo(blob, 118);
+        valueBytes.CopyTo(blob, 118 + nameBytes.Length);
+
+        var (cleartext, keys) = SupplementalCredentialsParser.ParseSupplementalCredentialsBlob(blob);
+
+        Assert.AreEqual("Roadmap test", cleartext);
+        Assert.IsNull(keys);
     }
 
     [TestMethod]
@@ -93,54 +133,14 @@ public class CredentialStructureTests
     }
 
     [TestMethod]
-    public void ParseSupplementalCredentialsBlob_ReadsUserPropertiesHeader()
+    public void UnwrapAttribute_ReadsPekIndexFromFifthHeaderByte()
     {
-        const string name = "Primary:CLEARTEXT";
-        var nameBytes = Encoding.Unicode.GetBytes(name);
-        var cleartextBytes = Encoding.Unicode.GetBytes("Roadmap test");
-        var valueBytes = Encoding.ASCII.GetBytes(Convert.ToHexString(cleartextBytes));
-        var blob = new byte[112 + 6 + nameBytes.Length + valueBytes.Length + 1];
-        BitConverter.GetBytes((uint)(blob.Length - 13)).CopyTo(blob, 4);
-        BitConverter.GetBytes((ushort)0x50).CopyTo(blob, 108);
-        BitConverter.GetBytes((ushort)1).CopyTo(blob, 110);
-        BitConverter.GetBytes((ushort)nameBytes.Length).CopyTo(blob, 112);
-        BitConverter.GetBytes((ushort)valueBytes.Length).CopyTo(blob, 114);
-        nameBytes.CopyTo(blob, 118);
-        valueBytes.CopyTo(blob, 118 + nameBytes.Length);
+        var blob = new byte[40];
+        blob[4] = 0;
+        blob[5] = 1;
 
-        var (cleartext, keys) = SupplementalCredentialsParser.ParseSupplementalCredentialsBlob(blob);
+        var result = CredentialCrypto.UnwrapAttribute(blob, new[] { new byte[16] });
 
-        Assert.AreEqual("Roadmap test", cleartext);
-        Assert.IsNull(keys);
-    }
-
-    [TestMethod]
-    public void ParseSupplementalCredentialsBlob_ReadsKerberosNewerKeyOffsets()
-    {
-        const string name = "Primary:Kerberos-Newer-Keys";
-        var nameBytes = Encoding.Unicode.GetBytes(name);
-        var key = Convert.FromHexString("00112233445566778899AABBCCDDEEFF");
-        var credential = new byte[48 + key.Length];
-        BitConverter.GetBytes((ushort)1).CopyTo(credential, 4);
-        BitConverter.GetBytes(18).CopyTo(credential, 24 + 12);
-        BitConverter.GetBytes(key.Length).CopyTo(credential, 24 + 16);
-        BitConverter.GetBytes(48).CopyTo(credential, 24 + 20);
-        key.CopyTo(credential, 48);
-        var valueBytes = Encoding.ASCII.GetBytes(Convert.ToHexString(credential));
-        var blob = new byte[112 + 6 + nameBytes.Length + valueBytes.Length + 1];
-        BitConverter.GetBytes((uint)(blob.Length - 13)).CopyTo(blob, 4);
-        BitConverter.GetBytes((ushort)0x50).CopyTo(blob, 108);
-        BitConverter.GetBytes((ushort)1).CopyTo(blob, 110);
-        BitConverter.GetBytes((ushort)nameBytes.Length).CopyTo(blob, 112);
-        BitConverter.GetBytes((ushort)valueBytes.Length).CopyTo(blob, 114);
-        nameBytes.CopyTo(blob, 118);
-        valueBytes.CopyTo(blob, 118 + nameBytes.Length);
-
-        var (_, keys) = SupplementalCredentialsParser.ParseSupplementalCredentialsBlob(blob);
-
-        Assert.IsNotNull(keys);
-        Assert.AreEqual(1, keys.Count);
-        Assert.AreEqual("AES256_CTS_HMAC_SHA1_96", keys[0].Algorithm);
-        Assert.AreEqual(Convert.ToHexString(key), keys[0].Key);
+        Assert.AreEqual(16, result.Length);
     }
 }

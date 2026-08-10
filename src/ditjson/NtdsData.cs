@@ -9,8 +9,7 @@ namespace ditjson
 {
     internal static class NtdsData
     {
-        private static readonly JsonSerializerOptions options = new()
-        {
+        private static readonly JsonSerializerOptions options = new() {
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
             NumberHandling = JsonNumberHandling.Strict,
             WriteIndented = true,
