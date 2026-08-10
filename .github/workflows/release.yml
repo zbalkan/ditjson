@@ -2,16 +2,20 @@ name: Release
 
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Release version'
-        required: true
-        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
   build-and-release:
     runs-on: ${{ matrix.os }}
+
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
@@ -25,48 +29,139 @@ jobs:
             artifact: ditjson-osx-x64
 
     steps:
-    - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v6
-      with:
-        dotnet-version: '10.0.x'
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
 
-    - name: Restore dependencies
-      run: dotnet restore src/ditjson.slnx
+      - name: Resolve release version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
 
-    - name: Build
-      run: dotnet build src/ditjson.slnx --no-restore --configuration Release
+          version="$(dotnet msbuild src/ditjson/ditjson.csproj \
+            -getProperty:Version \
+            -nologo | tail -n 1)"
 
-    - name: Run unit tests
-      run: dotnet test src/ditjson.Tests/ditjson.Tests.csproj --no-build --verbosity normal --configuration Release
+          if ! [[ "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]]; then
+            echo "Version '$version' is not a supported SemVer version." >&2
+            exit 1
+          fi
 
-    - name: Publish
-      run: dotnet publish src/ditjson/ditjson.csproj --no-build --configuration Release --runtime ${{ matrix.rid }} --self-contained
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
 
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v7
-      with:
-        name: ${{ matrix.artifact }}
-        path: src/ditjson/bin/Release/net10.0/${{ matrix.rid }}/publish/
+      - name: Check release does not already exist
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Tag '$RELEASE_TAG' already exists." >&2
+            echo "Update the version in Directory.Build.props before releasing." >&2
+            exit 1
+          fi
+
+      - name: Restore dependencies
+        run: dotnet restore src/ditjson.slnx
+
+      - name: Build
+        run: dotnet build src/ditjson.slnx --no-restore --configuration Release
+
+      - name: Run unit tests
+        run: dotnet test src/ditjson.Tests/ditjson.Tests.csproj --no-build --no-restore --verbosity normal --configuration Release
+
+      - name: Publish
+        run: >
+          dotnet publish src/ditjson/ditjson.csproj
+          --configuration Release
+          --runtime ${{ matrix.rid }}
+          --self-contained
+          --output publish/${{ matrix.rid }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.artifact }}
+          path: publish/${{ matrix.rid }}/
 
   create-release:
     needs: build-and-release
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
-    - name: Download all artifacts
-      uses: actions/download-artifact@v8
-      with:
-        path: artifacts
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
 
-    - name: Create Release
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        gh release create v${{ github.event.inputs.version }} \
-          --title "Release v${{ github.event.inputs.version }}" \
-          --generate-notes \
-          artifacts/**/*
+      - name: Resolve release version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="$(dotnet msbuild src/ditjson/ditjson.csproj \
+            -getProperty:Version \
+            -nologo | tail -n 1)"
+
+          if ! [[ "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]]; then
+            echo "Version '$version' is not a supported SemVer version." >&2
+            exit 1
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+
+      - name: Verify release tag is unused
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Tag '$RELEASE_TAG' already exists." >&2
+            echo "Update the version in Directory.Build.props before releasing." >&2
+            exit 1
+          fi
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+
+      - name: Create and push release tag
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git tag --annotate "$RELEASE_TAG" --message "Release $RELEASE_TAG"
+          git push origin "$RELEASE_TAG"
+
+      - name: Create Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          gh release create "$RELEASE_TAG" \
+            --title "Release $RELEASE_TAG" \
+            --generate-notes \
+            artifacts/**/*
