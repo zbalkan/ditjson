@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using Microsoft.Isam.Esent.Interop;
-using ditjson.Models;
 using ditjson.Decoders;
+using ditjson.Models;
+using Microsoft.Isam.Esent.Interop;
 
 namespace ditjson.Extractors
 {
@@ -11,8 +11,7 @@ namespace ditjson.Extractors
         internal static Computer ExtractComputer(Session session, JET_TABLEID table, int recordId,
             IDictionary<string, JET_COLUMNID> columnDict)
         {
-            var computer = new Computer
-            {
+            var computer = new Computer {
                 RecordId = recordId,
                 Name = ColumnExtractor.GetString(session, table, columnDict, NtdsColumnNames.ObjectName)!,
                 ObjectClass = "computer",
@@ -40,6 +39,8 @@ namespace ditjson.Extractors
 
                 DialInAccessPermission = ColumnExtractor.GetInt32(session, table, columnDict,
                     NtdsColumnNames.DialInAccessPermission),
+                PrimaryGroupId = ColumnExtractor.GetInt32(session, table, columnDict,
+                    NtdsColumnNames.PrimaryGroupId),
 
                 IsDeleted = ColumnExtractor.GetInt32(session, table, columnDict,
                     NtdsColumnNames.IsDeleted) != 0,

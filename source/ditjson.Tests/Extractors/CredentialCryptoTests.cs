@@ -67,7 +67,7 @@ public class CredentialCryptoTests
     }
 
     [TestMethod]
-    public void PasswordHistory_OmitsCurrentHashChunk()
+    public void PasswordHistory_OmitsCurrentHashAlreadyStoredInPasswordHashes()
     {
         const uint rid = 500;
         var pek = Convert.FromHexString("00112233445566778899AABBCCDDEEFF");
@@ -85,8 +85,33 @@ public class CredentialCryptoTests
 
         var result = PasswordHistoryExtractor.ParsePasswordHistory(blob, new[] { pek }, rid);
 
-        Assert.AreEqual(1, result.Count);
+        Assert.HasCount(1, result);
         Assert.AreEqual(Convert.ToHexString(historical), result[0]);
+    }
+
+    [TestMethod]
+    public void PasswordHistory_PreservesZeroChunksForLmNtIndexAlignment()
+    {
+        const uint rid = 500;
+        var pek = Convert.FromHexString("00112233445566778899AABBCCDDEEFF");
+        var material = Convert.FromHexString("102132435465768798A9BACBDCEDFE0F");
+        var current = Convert.FromHexString("11111111111111111111111111111111");
+        var zero = new byte[16];
+        var historical = Convert.FromHexString("22222222222222222222222222222222");
+        var ridEncrypted = AddRidDesLayer(current.Concat(zero).Concat(historical).ToArray(), rid);
+        using var md5 = IncrementalHash.CreateHash(HashAlgorithmName.MD5);
+        md5.AppendData(pek);
+        md5.AppendData(material);
+        var cipher = new RC4(md5.GetHashAndReset()).Decrypt(ridEncrypted);
+        var blob = new byte[24 + cipher.Length];
+        material.CopyTo(blob, 8);
+        cipher.CopyTo(blob, 24);
+
+        var result = PasswordHistoryExtractor.ParsePasswordHistory(blob, new[] { pek }, rid);
+
+        Assert.AreEqual(2, result.Count);
+        Assert.AreEqual("00000000000000000000000000000000", result[0]);
+        Assert.AreEqual(Convert.ToHexString(historical), result[1]);
     }
 
     private static byte[] AddRidDesLayer(byte[] plain, uint rid)

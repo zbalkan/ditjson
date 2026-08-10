@@ -74,4 +74,21 @@ public class JsonOutputFormatterTests
         Assert.AreEqual("COMPUTER-KEY", serializedComputer.GetProperty("supplementalCredentials")
             .GetProperty("kerberosKeys")[0].GetProperty("key").GetString());
     }
+
+    [TestMethod]
+    public void FormatStructuredOutput_UsesCompactMemberOfReferences()
+    {
+        var user = new User
+        {
+            MemberOf = [new GroupMembership { Name = "Domain Users", ObjectSid = "S-1-5-21-1-2-3-513" }]
+        };
+
+        var json = JsonOutputFormatter.FormatStructuredOutput([user], [], []);
+
+        using var document = JsonDocument.Parse(json);
+        var membership = document.RootElement.GetProperty("users")[0].GetProperty("MemberOf")[0];
+        Assert.AreEqual(2, membership.EnumerateObject().Count());
+        Assert.AreEqual("Domain Users", membership.GetProperty("Name").GetString());
+        Assert.AreEqual("S-1-5-21-1-2-3-513", membership.GetProperty("ObjectSid").GetString());
+    }
 }

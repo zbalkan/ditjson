@@ -25,6 +25,8 @@ namespace ditjson.Extractors
                     NtdsColumnNames.SamAccountName)!,
                 UserPrincipalName = ColumnExtractor.GetString(session, table, columnDict,
                     NtdsColumnNames.UserPrincipalName)!,
+                Certificate = EncodeBinary(ColumnExtractor.GetBinary(session, table, columnDict,
+                    NtdsColumnNames.UserCertificate)),
 
                 WhenCreated = TimestampDecoder.DecodeDsTime(ColumnExtractor.GetInt64(
                     session, table, columnDict, NtdsColumnNames.WhenCreated))!,
@@ -79,5 +81,8 @@ namespace ditjson.Extractors
 
             return user;
         }
+
+        internal static string? EncodeBinary(byte[]? value) =>
+            value == null || value.Length == 0 ? null : Convert.ToBase64String(value);
     }
 }

@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using Microsoft.Isam.Esent.Interop;
-using ditjson.Models;
 using ditjson.Decoders;
+using ditjson.Models;
+using Microsoft.Isam.Esent.Interop;
 
 namespace ditjson.Extractors
 {
@@ -11,8 +11,7 @@ namespace ditjson.Extractors
         internal static Group ExtractGroup(Session session, JET_TABLEID table, int recordId,
             IDictionary<string, JET_COLUMNID> columnDict)
         {
-            var group = new Group
-            {
+            var group = new Group {
                 RecordId = recordId,
                 Name = ColumnExtractor.GetString(session, table, columnDict, NtdsColumnNames.ObjectName)!,
                 ObjectClass = "group",
@@ -32,7 +31,8 @@ namespace ditjson.Extractors
                 IsDeleted = ColumnExtractor.GetInt32(session, table, columnDict,
                     NtdsColumnNames.IsDeleted) != 0,
 
-                Members = []
+                Members = [],
+                MemberOf = []
             };
 
             var groupTypeValue = ColumnExtractor.GetInt32(session, table, columnDict,

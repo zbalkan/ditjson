@@ -84,37 +84,18 @@ namespace ditjson.Extractors
             }
         }
 
-        private static bool IsZeroHash(byte[] hash)
-        {
-            if (hash == null || hash.Length < 16)
-            {
-                return true;
-            }
-
-            for (var i = 0; i < 16; i++)
-            {
-                if (hash[i] != 0)
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
         internal static List<string> ParsePasswordHistory(byte[] data, IReadOnlyList<byte[]> peks, uint rid)
         {
             var hashes = new List<string>();
             var plain = CredentialCrypto.RemoveRidDesLayer(CredentialCrypto.UnwrapAttribute(data, peks), rid);
-            // Chunk zero is the current password hash, not a history entry.
-            // Match secretsdump's history output by omitting it.
+            // ntPwdHistory/lmPwdHistory contain the current value at index zero.
+            // It is already represented by passwordHashes, so only expose prior
+            // values here. Preserve zero entries after it to keep LM/NT indices
+            // aligned without duplicating the current hashes in the JSON.
             for (var offset = 16; offset + 16 <= plain.Length; offset += 16)
             {
                 var hashData = plain.AsSpan(offset, 16).ToArray();
-                if (!IsZeroHash(hashData))
-                {
-                    hashes.Add(Convert.ToHexString(hashData));
-                }
+                hashes.Add(Convert.ToHexString(hashData));
             }
             return hashes;
         }

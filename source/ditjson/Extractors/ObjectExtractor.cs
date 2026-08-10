@@ -1,5 +1,8 @@
 using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
+using System.Linq;
+using ditjson.Decoders;
 using ditjson.Filtering;
 using ditjson.Models;
 using Microsoft.Isam.Esent.Interop;
@@ -16,6 +19,8 @@ namespace ditjson.Extractors
             var users = new List<User>();
             var groups = new List<Group>();
             var computers = new List<Computer>();
+            var directoryObjects = new Dictionary<int, NtdsObject>();
+            var userAncestorIds = new Dictionary<int, List<int>>();
 
             if (!selectedTables.Contains("datatable"))
             {
@@ -47,6 +52,8 @@ namespace ditjson.Extractors
                             session, table, columnDict, NtdsColumnNames.SamAccountType);
                         var currentRecordId = ColumnExtractor.GetRecordId(
                             session, table, columnDict, recordId);
+                        directoryObjects[currentRecordId] = ExtractDirectoryReference(
+                            session, table, columnDict, currentRecordId, samAccountType);
 
                         if (ObjectClassifier.IsUserObject(samAccountType))
                         {
@@ -54,6 +61,8 @@ namespace ditjson.Extractors
                             FieldCleaner.CleanUser(user);
                             if (ObjectFilter.ShouldIncludeUser(user, filterOptions))
                             {
+                                userAncestorIds[user.RecordId] = ParseAncestorIds(ColumnExtractor.GetBinary(
+                                    session, table, columnDict, NtdsColumnNames.Ancestors));
                                 ObjectFilter.CleanupUser(user, filterOptions.IncludeEmptyCollections);
                                 users.Add(user);
                             }
@@ -88,6 +97,11 @@ namespace ditjson.Extractors
                 }
 
                 Api.JetResetTableSequential(session, table, ResetTableSequentialGrbit.None);
+                PopulateAncestors(users, userAncestorIds, directoryObjects);
+                foreach (var user in users)
+                {
+                    ObjectFilter.CleanupUser(user, filterOptions.IncludeEmptyCollections);
+                }
             }
             catch (Exception ex)
             {
@@ -102,5 +116,48 @@ namespace ditjson.Extractors
 
             return (users, groups, computers);
         }
+
+        internal static List<int> ParseAncestorIds(byte[]? value)
+        {
+            var ids = new List<int>();
+            if (value == null)
+            {
+                return ids;
+            }
+
+            for (var offset = 0; offset + sizeof(int) <= value.Length; offset += sizeof(int))
+            {
+                ids.Add(BinaryPrimitives.ReadInt32LittleEndian(value.AsSpan(offset, sizeof(int))));
+            }
+
+            return ids;
+        }
+
+        internal static void PopulateAncestors(IEnumerable<User> users,
+            IReadOnlyDictionary<int, List<int>> ancestorIds,
+            IReadOnlyDictionary<int, NtdsObject> directoryObjects)
+        {
+            foreach (var user in users)
+            {
+                user.Ancestors = ancestorIds.TryGetValue(user.RecordId, out var ids)
+                    ? ids.Where(directoryObjects.ContainsKey).Select(id => directoryObjects[id]).ToList()
+                    : [];
+            }
+        }
+
+        private static NtdsObject ExtractDirectoryReference(Session session, JET_TABLEID table,
+            IDictionary<string, JET_COLUMNID> columns, int recordId, int samAccountType) => new()
+        {
+            RecordId = recordId,
+            Name = ColumnExtractor.GetString(session, table, columns, NtdsColumnNames.ObjectName),
+            ObjectGuid = GuidDecoder.Decode(ColumnExtractor.GetBinary(
+                session, table, columns, NtdsColumnNames.ObjectGuid)),
+            ObjectSid = SidDecoder.DecodeNtds(ColumnExtractor.GetBinary(
+                session, table, columns, NtdsColumnNames.ObjectSid)),
+            ObjectClass = ObjectClassifier.IsUserObject(samAccountType) ? "user"
+                : ObjectClassifier.IsComputerObject(samAccountType) ? "computer"
+                : ObjectClassifier.IsGroupObject(samAccountType) ? "group"
+                : "container"
+        };
     }
 }

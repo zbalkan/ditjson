@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ditjson.Decoders;
 using ditjson.Models;
 using Microsoft.Isam.Esent.Interop;
 
@@ -8,35 +9,36 @@ namespace ditjson.Extractors
 {
     internal static class LinkExtractor
     {
-        private const int MEMBER_ATTR = 0x200000d8;
+        private const string BacklinkDnt = "backlink_DNT";
+        private const string LinkBase = "link_base";
+        private const string LinkDeleteTime = "link_deltime";
+        private const string LinkDnt = "link_DNT";
+        private const int MemberLinkId = 2;
 
-        // Link table attribute IDs (from ntdsxtract)
-        private const int MEMBEROF_ATTR = 0x20000210;  // memberOf
-
-        // member
-        private const int PRIMARY_GROUP_ATTR = 0x20000009;
-
-        internal static void ExtractGroupMemberships(Session session, JET_DBID dbid, List<User> users, List<Group> groups, List<Computer> computers)
+        internal static void ExtractGroupMemberships(Session session, JET_DBID dbid, List<User> users,
+            List<Group> groups, List<Computer> computers)
         {
             if (users.Count == 0 && computers.Count == 0 && groups.Count == 0)
             {
                 return;
             }
 
-            var userDict = users.ToDictionary(u => u.RecordId);
-            var groupDict = groups.ToDictionary(g => g.RecordId);
-            var computerDict = computers.ToDictionary(c => c.RecordId);
-
             try
             {
                 using var table = new Table(session, dbid, "link_table", OpenTableGrbit.ReadOnly);
-                var columnDict = Api.GetColumnDictionary(session, table);
-
-                if (!columnDict.ContainsKey("ATTj590001") || !columnDict.ContainsKey("ATTj590002") || !columnDict.ContainsKey("ATTk590005"))
+                var columns = Api.GetColumnDictionary(session, table);
+                if (!columns.ContainsKey(BacklinkDnt) || !columns.ContainsKey(LinkDnt))
                 {
+                    Console.Error.WriteLine(
+                        $"[!] Group membership unavailable: link_table must contain {BacklinkDnt} and {LinkDnt}");
                     return;
                 }
 
+                var linksRead = 0;
+                var membershipsAdded = 0;
+                var userById = users.ToDictionary(u => u.RecordId);
+                var groupById = groups.ToDictionary(g => g.RecordId);
+                var computerById = computers.ToDictionary(c => c.RecordId);
                 Api.JetSetTableSequential(session, table, SetTableSequentialGrbit.None);
                 Api.MoveBeforeFirst(session, table);
 
@@ -44,20 +46,26 @@ namespace ditjson.Extractors
                 {
                     try
                     {
-                        var backLinkAttribute = ColumnExtractor.GetInt32(session, table, columnDict, "ATTj590001");
-                        var sourceRecordId = ColumnExtractor.GetInt32(session, table, columnDict, "ATTj590002");
-                        var targetRecordId = ColumnExtractor.GetInt32(session, table, columnDict, "ATTk590005");
-                        var deletedTime = ColumnExtractor.GetString(session, table, columnDict, "ATTm590006");
-
-                        // memberOf relationship (0x20000210)
-                        if (backLinkAttribute == MEMBEROF_ATTR)
+                        // link_base is the schema linkID. member is linkID 2; without
+                        // this filter, unrelated linked attributes (for example
+                        // managedBy) can be mistaken for group membership.
+                        if (columns.ContainsKey(LinkBase) &&
+                            ColumnExtractor.GetInt32(session, table, columns, LinkBase) != MemberLinkId)
                         {
-                            ProcessMemberOf(sourceRecordId, targetRecordId, deletedTime, userDict, computerDict, groupDict);
+                            continue;
                         }
-                        // member relationship (0x200000d8)
-                        else if (backLinkAttribute == MEMBER_ATTR)
+
+                        // In the AD link table, backlink_DNT is the member and link_DNT is
+                        // the object holding the forward link (the group for member links).
+                        var memberRecordId = ColumnExtractor.GetInt32(session, table, columns, BacklinkDnt);
+                        var groupRecordId = ColumnExtractor.GetInt32(session, table, columns, LinkDnt);
+                        var deletedTime = TimestampDecoder.DecodeDsTime(
+                            ColumnExtractor.GetInt64(session, table, columns, LinkDeleteTime));
+                        linksRead++;
+                        if (AddDirectMembership(memberRecordId, groupRecordId, deletedTime,
+                                userById, groupById, computerById))
                         {
-                            ProcessMember(sourceRecordId, targetRecordId, deletedTime, groupDict, userDict, computerDict);
+                            membershipsAdded++;
                         }
                     }
                     catch (Exception ex)
@@ -67,6 +75,9 @@ namespace ditjson.Extractors
                 }
 
                 Api.JetResetTableSequential(session, table, ResetTableSequentialGrbit.None);
+                var primaryGroupsAdded = AddPrimaryGroupMemberships(users, groups, computers);
+                Console.Error.WriteLine(
+                    $"[+] Group memberships: {membershipsAdded} direct and {primaryGroupsAdded} primary-group relationships ({linksRead} link rows read)");
             }
             catch (Exception ex)
             {
@@ -74,96 +85,102 @@ namespace ditjson.Extractors
             }
         }
 
-        private static void ProcessMember(int sourceRecordId, int targetRecordId, string? deletedTime,
-            Dictionary<int, Group> groupDict, Dictionary<int, User> userDict, Dictionary<int, Computer> computerDict)
+        internal static bool AddDirectMembership(int memberRecordId, int groupRecordId, string? deletedTime,
+            IList<User> users, IList<Group> groups, IList<Computer> computers)
+            => AddDirectMembership(memberRecordId, groupRecordId, deletedTime,
+                users.ToDictionary(u => u.RecordId), groups.ToDictionary(g => g.RecordId),
+                computers.ToDictionary(c => c.RecordId));
+
+        private static bool AddDirectMembership(int memberRecordId, int groupRecordId, string? deletedTime,
+            IReadOnlyDictionary<int, User> users, IReadOnlyDictionary<int, Group> groups,
+            IReadOnlyDictionary<int, Computer> computers)
         {
-            if (!groupDict.TryGetValue(sourceRecordId, out var group))
+            if (!groups.TryGetValue(groupRecordId, out var group))
             {
-                return;
+                return false;
             }
 
-            GroupMember? member = null;
-
-            if (userDict.TryGetValue(targetRecordId, out var user))
+            NtdsObject? member = users.TryGetValue(memberRecordId, out var user) ? user
+                : computers.TryGetValue(memberRecordId, out var computer) ? computer
+                : groups.TryGetValue(memberRecordId, out var childGroup) ? childGroup
+                : null;
+            if (member == null)
             {
-                member = new GroupMember
-                {
-                    RecordId = targetRecordId,
-                    Name = user.Name,
-                    ObjectGuid = user.ObjectGuid,
-                    ObjectClass = user.ObjectClass,
-                    IsPrimaryGroup = false,
-                    DeletedTime = deletedTime
-                };
-            }
-            else if (computerDict.TryGetValue(targetRecordId, out var computer))
-            {
-                member = new GroupMember
-                {
-                    RecordId = targetRecordId,
-                    Name = computer.Name,
-                    ObjectGuid = computer.ObjectGuid,
-                    ObjectClass = computer.ObjectClass,
-                    IsPrimaryGroup = false,
-                    DeletedTime = deletedTime
-                };
-            }
-            else if (groupDict.TryGetValue(targetRecordId, out var targetGroup))
-            {
-                member = new GroupMember
-                {
-                    RecordId = targetRecordId,
-                    Name = targetGroup.Name,
-                    ObjectGuid = targetGroup.ObjectGuid,
-                    ObjectClass = targetGroup.ObjectClass,
-                    IsPrimaryGroup = false,
-                    DeletedTime = deletedTime
-                };
+                return false;
             }
 
-            if (member != null)
-            {
-                group.Members ??= [];
-                if (!group.Members.Any(m => m.RecordId == targetRecordId))
-                {
-                    group.Members.Add(member);
-                }
-            }
+            AddMembership(member, group, deletedTime, false);
+            return true;
         }
 
-        private static void ProcessMemberOf(int sourceRecordId, int targetRecordId, string? deletedTime,
-                    Dictionary<int, User> userDict, Dictionary<int, Computer> computerDict, Dictionary<int, Group> groupDict)
+        internal static int AddPrimaryGroupMemberships(IList<User> users, IList<Group> groups,
+            IList<Computer> computers)
         {
-            if (!groupDict.TryGetValue(targetRecordId, out var targetGroup))
+            var groupsBySid = groups
+                .Where(g => !string.IsNullOrEmpty(g.ObjectSid))
+                .GroupBy(g => g.ObjectSid!, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+            var added = 0;
+
+            foreach (var user in users)
             {
-                return;
+                if (TryAddPrimaryGroup(user, user.PrimaryGroupId, groupsBySid)) added++;
             }
 
-            var membership = new GroupMembership
+            foreach (var computer in computers)
             {
-                RecordId = targetRecordId,
-                Name = targetGroup.Name,
-                ObjectGuid = targetGroup.ObjectGuid,
-                ObjectSid = targetGroup.ObjectSid,
-                IsPrimaryGroup = false,
-                DeletedTime = deletedTime
+                if (TryAddPrimaryGroup(computer, computer.PrimaryGroupId, groupsBySid)) added++;
+            }
+
+            return added;
+        }
+
+        private static bool TryAddPrimaryGroup(NtdsObject principal, int primaryGroupId,
+            IDictionary<string, Group> groupsBySid)
+        {
+            if (primaryGroupId <= 0 || string.IsNullOrEmpty(principal.ObjectSid)) return false;
+            var separator = principal.ObjectSid.LastIndexOf('-');
+            if (separator <= 0) return false;
+            var groupSid = $"{principal.ObjectSid[..separator]}-{primaryGroupId}";
+            if (!groupsBySid.TryGetValue(groupSid, out var group)) return false;
+
+            AddMembership(principal, group, null, true);
+            return true;
+        }
+
+        private static void AddMembership(NtdsObject member, Group group, string? deletedTime, bool isPrimary)
+        {
+            group.Members ??= [];
+            if (!group.Members.Any(m => m.RecordId == member.RecordId &&
+                    m.DeletedTime == deletedTime && m.IsPrimaryGroup == isPrimary))
+            {
+                group.Members.Add(new GroupMember {
+                    RecordId = member.RecordId,
+                    Name = member.Name,
+                    ObjectGuid = member.ObjectGuid,
+                    ObjectSid = member.ObjectSid,
+                    ObjectClass = member.ObjectClass,
+                    IsPrimaryGroup = isPrimary,
+                    DeletedTime = deletedTime
+                });
+            }
+
+            var membership = new GroupMembership {
+                Name = group.Name,
+                ObjectSid = group.ObjectSid
             };
 
-            if (userDict.TryGetValue(sourceRecordId, out var user))
+            List<GroupMembership>? memberships = member switch {
+                User user => user.MemberOf ??= [],
+                Computer computer => computer.MemberOf ??= [],
+                Group childGroup => childGroup.MemberOf ??= [],
+                _ => null
+            };
+            if (memberships != null && !memberships.Any(m =>
+                    string.Equals(m.ObjectSid, group.ObjectSid, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(m.Name, group.Name, StringComparison.Ordinal)))
             {
-                user.MemberOf ??= [];
-                if (!user.MemberOf.Any(m => m.RecordId == targetRecordId))
-                {
-                    user.MemberOf.Add(membership);
-                }
-            }
-            else if (computerDict.TryGetValue(sourceRecordId, out var computer))
-            {
-                computer.MemberOf ??= [];
-                if (!computer.MemberOf.Any(m => m.RecordId == targetRecordId))
-                {
-                    computer.MemberOf.Add(membership);
-                }
+                memberships.Add(membership);
             }
         }
     }

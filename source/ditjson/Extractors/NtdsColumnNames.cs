@@ -8,6 +8,7 @@ namespace ditjson.Extractors
     internal static class NtdsColumnNames
     {
         internal const string AccountExpires = "ATTq589983";
+        internal const string Ancestors = "Ancestors_col";
         internal const string BadPasswordCount = "ATTj589836";
         internal const string BadPasswordTime = "ATTq589873";
         internal const string BitLockerKeyPackage = "ATTk591823";
@@ -36,6 +37,7 @@ namespace ditjson.Extractors
         internal const string SamAccountType = "ATTj590126";
         internal const string SupplementalCredentials = "ATTk589949";
         internal const string UserAccountControl = "ATTj589832";
+        internal const string UserCertificate = "ATTk36";
         internal const string UserPrincipalName = "ATTm590480";
         internal const string WhenChanged = "ATTl131075";
         internal const string WhenCreated = "ATTl131074";

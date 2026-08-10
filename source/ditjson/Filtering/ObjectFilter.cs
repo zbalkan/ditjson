@@ -47,6 +47,11 @@ namespace ditjson.Filtering
             {
                 group.Members = null;
             }
+
+            if (!includeEmptyCollections && group.MemberOf != null && group.MemberOf.Count == 0)
+            {
+                group.MemberOf = null;
+            }
         }
 
         internal static void CleanupUser(User? user, bool includeEmptyCollections)
