@@ -21,9 +21,11 @@ jobs:
           - os: ubuntu-latest
             rid: linux-x64
             artifact: ditjson-linux-x64
+
           - os: windows-latest
             rid: win-x64
-            artifact: ditjson-win-x64.exe
+            artifact: ditjson-win-x64
+
           - os: macos-latest
             rid: osx-x64
             artifact: ditjson-osx-x64
@@ -95,7 +97,12 @@ jobs:
         run: dotnet build src/ditjson.slnx --no-restore --configuration Release
 
       - name: Run unit tests
-        run: dotnet test src/ditjson.Tests/ditjson.Tests.csproj --no-build --no-restore --verbosity normal --configuration Release
+        run: >
+          dotnet test src/ditjson.Tests/ditjson.Tests.csproj
+          --no-build
+          --no-restore
+          --verbosity normal
+          --configuration Release
 
       - name: Publish
         run: >
@@ -161,6 +168,28 @@ jobs:
         with:
           path: artifacts
 
+      - name: Package release artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p release
+
+          (
+            cd artifacts/ditjson-linux-x64
+            zip -r ../../release/ditjson-linux-x64.zip .
+          )
+
+          (
+            cd artifacts/ditjson-win-x64
+            zip -r ../../release/ditjson-win-x64.zip .
+          )
+
+          (
+            cd artifacts/ditjson-osx-x64
+            zip -r ../../release/ditjson-osx-x64.zip .
+          )
+
       - name: Create and push release tag
         env:
           RELEASE_TAG: ${{ steps.version.outputs.tag }}
@@ -185,4 +214,4 @@ jobs:
           gh release create "$RELEASE_TAG" \
             --title "Release $RELEASE_TAG" \
             --generate-notes \
-            artifacts/**/*
+            release/*.zip
