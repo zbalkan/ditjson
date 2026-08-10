@@ -93,24 +93,24 @@ namespace ditjson
                 // Extract supplemental credentials if requested
                 if (opts.ExtractSupplemental)
                 {
-                    Extractors.SupplementalCredentialsParser.ParseSupplementalCredentials(session, dbid, users, computers);
+                    SupplementalCredentialsParser.ParseSupplementalCredentials(session, dbid, users, computers);
                 }
 
                 // Extract password hashes and history if SYSTEM hive is provided
                 if ((opts.ExtractHashes || opts.ExtractHistory) && !string.IsNullOrEmpty(opts.SystemHive))
                 {
-                    var bootkey = Extractors.RegistryDecryptor.ExtractBootkey(opts.SystemHive);
+                    var bootkey = RegistryDecryptor.ExtractBootkey(opts.SystemHive);
                     if (bootkey != null && bootkey.Length > 0)
                     {
                         if (opts.ExtractHashes)
                         {
                             Console.WriteLine("[*] Extracting password hashes...");
-                            Extractors.PasswordHashDecryptor.DecryptPasswordHashes(session, dbid, users, computers, opts.SystemHive);
+                            PasswordHashDecryptor.DecryptPasswordHashes(session, dbid, users, computers, opts.SystemHive);
                         }
 
                         if (opts.ExtractHistory)
                         {
-                            Extractors.PasswordHistoryExtractor.ExtractPasswordHistory(session, dbid, users, bootkey);
+                            PasswordHistoryExtractor.ExtractPasswordHistory(session, dbid, users, bootkey);
                         }
                     }
                     else if (opts.ExtractHashes || opts.ExtractHistory)

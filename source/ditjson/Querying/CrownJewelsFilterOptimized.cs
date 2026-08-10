@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
@@ -38,6 +39,7 @@ namespace ditjson.Querying
             public int Count { get; set; }
         }
 
+        [RequiresUnreferencedCode("Calls ditjson.Querying.CrownJewelsFilterOptimized.BuildFinalOutput(JsonElement, String, Int32)")]
         public static string ApplyCrownJewels(string jsonData)
         {
             try
@@ -64,7 +66,7 @@ namespace ditjson.Querying
 
                 // Unified processing: single pass through all objects
                 var results = new StringBuilder("[");
-                int totalResults = 0;
+                var totalResults = 0;
 
                 // Process users with first 9 queries
                 foreach (var user in users.EnumerateArray())
@@ -74,7 +76,7 @@ namespace ditjson.Querying
                         if (query.Predicate(user))
                         {
                             if (totalResults > 0)
-                                results.Append(",");
+                                results.Append(',');
 
                             results.Append(ProjectElementToJson(user, query.Fields));
                             query.Count++;
@@ -90,7 +92,7 @@ namespace ditjson.Querying
                     if (computerQuery.Predicate(computer))
                     {
                         if (totalResults > 0)
-                            results.Append(",");
+                            results.Append(',');
 
                         results.Append(ProjectElementToJson(computer, computerQuery.Fields));
                         computerQuery.Count++;
@@ -98,7 +100,7 @@ namespace ditjson.Querying
                     }
                 }
 
-                results.Append("]");
+                results.Append(']');
 
                 // Unified logging pass
                 foreach (var query in allQueries)
@@ -129,25 +131,26 @@ namespace ditjson.Querying
         private static string ProjectElementToJson(JsonElement element, string[] fields)
         {
             var sb = new StringBuilder("{");
-            bool first = true;
+            var first = true;
 
             foreach (var field in fields)
             {
                 if (element.TryGetProperty(field, out var value))
                 {
                     if (!first)
-                        sb.Append(",");
+                        sb.Append(',');
 
-                    sb.Append("\"").Append(field).Append("\":");
+                    sb.Append('"').Append(field).Append("\":");
                     sb.Append(value.GetRawText());
                     first = false;
                 }
             }
 
-            sb.Append("}");
+            sb.Append('}');
             return sb.ToString();
         }
 
+        [RequiresUnreferencedCode("Calls System.Text.Json.JsonSerializer.Deserialize<TValue>(String, JsonSerializerOptions)")]
         private static string BuildFinalOutput(JsonElement metadata, string resultsJson, int totalCount)
         {
             var output = new

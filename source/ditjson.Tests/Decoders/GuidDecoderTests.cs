@@ -1,4 +1,3 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using ditjson.Decoders;
 
 namespace ditjson.Tests.Decoders;
@@ -29,7 +28,7 @@ public class GuidDecoderTests
     public void Decode_WithNullInput_ReturnsEmptyGuid()
     {
         // Act
-        var result = GuidDecoder.Decode((byte[])null);
+        var result = GuidDecoder.Decode((byte[]?)null);
 
         // Assert
         Assert.AreEqual(Guid.Empty, result);

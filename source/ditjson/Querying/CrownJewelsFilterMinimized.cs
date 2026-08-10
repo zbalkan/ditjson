@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
@@ -91,6 +92,7 @@ namespace ditjson.Querying
             public int C { get; set; }
         }
 
+        [RequiresUnreferencedCode("Calls ditjson.Querying.CrownJewelsFilterMinimized.Out(JsonElement, String, Int32)")]
         public static string ApplyCrownJewels(string jsonData)
         {
             try
@@ -117,14 +119,14 @@ namespace ditjson.Querying
 
                 // Single pass processing
                 var res = new StringBuilder("[");
-                int tot = 0;
+                var tot = 0;
 
                 // Process users
                 foreach (var u in users.EnumerateArray())
                     foreach (var q in qs.Take(9))
                         if (q.P(u))
                         {
-                            if (tot++ > 0) res.Append(",");
+                            if (tot++ > 0) res.Append(',');
                             res.Append(Proj(u, q.F));
                             q.C++;
                         }
@@ -133,12 +135,12 @@ namespace ditjson.Querying
                 foreach (var c in comps.EnumerateArray())
                     if (qs[9].P(c))
                     {
-                        if (tot++ > 0) res.Append(",");
+                        if (tot++ > 0) res.Append(',');
                         res.Append(Proj(c, qs[9].F));
                         qs[9].C++;
                     }
 
-                res.Append("]");
+                res.Append(']');
 
                 foreach (var q in qs.Where(x => x.C > 0))
                     Console.WriteLine($"[*] {q.N}: {q.C} results");
@@ -155,17 +157,18 @@ namespace ditjson.Querying
         private static string Proj(JsonElement e, string[] fs)
         {
             var s = new StringBuilder("{");
-            bool f = true;
+            var f = true;
             foreach (var x in fs)
                 if (e.TryGetProperty(x, out var v))
                 {
-                    if (!f) s.Append(",");
-                    s.Append("\"").Append(x).Append("\":").Append(v.GetRawText());
+                    if (!f) s.Append(',');
+                    s.Append('"').Append(x).Append("\":").Append(v.GetRawText());
                     f = false;
                 }
-            return s.Append("}").ToString();
+            return s.Append('}').ToString();
         }
 
+        [RequiresUnreferencedCode("Calls System.Text.Json.JsonSerializer.Deserialize<TValue>(String, JsonSerializerOptions)")]
         private static string Out(JsonElement m, string r, int c)
         {
             var o = new System.Text.Json.JsonSerializerOptions
@@ -175,11 +178,11 @@ namespace ditjson.Querying
             };
             var x = new
             {
-                metadata = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(m.GetRawText()),
-                results = System.Text.Json.JsonSerializer.Deserialize<List<object>>(r),
+                metadata = JsonSerializer.Deserialize<Dictionary<string, object>>(m.GetRawText()),
+                results = JsonSerializer.Deserialize<List<object>>(r),
                 resultCount = c
             };
-            return System.Text.Json.JsonSerializer.Serialize(x, o);
+            return JsonSerializer.Serialize(x, o);
         }
     }
 }

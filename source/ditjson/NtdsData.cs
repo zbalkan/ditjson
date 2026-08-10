@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Isam.Esent.Interop;
@@ -16,7 +17,7 @@ namespace ditjson
             Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         };
 
-
+        [RequiresUnreferencedCode("Calls System.Text.Json.JsonSerializer.Serialize<TValue>(TValue, JsonSerializerOptions)")]
         internal static string TablesToJson(Session session, JET_DBID dbid, List<string> tables)
         {
             var ntdsDictionary = new Dictionary<string, object>();

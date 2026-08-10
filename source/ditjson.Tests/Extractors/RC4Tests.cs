@@ -1,4 +1,3 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using ditjson.Extractors;
 
 namespace ditjson.Tests.Extractors;

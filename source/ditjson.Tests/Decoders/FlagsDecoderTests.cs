@@ -1,4 +1,3 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using ditjson.Decoders;
 
 namespace ditjson.Tests.Decoders;

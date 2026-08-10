@@ -10,7 +10,7 @@ namespace ditjson.Extractors
     {
         internal static (List<User> users, List<Group> groups, List<Computer> computers)
             ExtractStructuredObjects(Session session, JET_DBID dbid, List<string> selectedTables,
-                ObjectFilter.FilterOptions filterOptions = null)
+                ObjectFilter.FilterOptions? filterOptions = null)
         {
             filterOptions ??= new ObjectFilter.FilterOptions();
             var users = new List<User>();

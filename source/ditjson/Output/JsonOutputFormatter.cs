@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ditjson.Models;
@@ -8,6 +9,7 @@ namespace ditjson.Output
 {
     internal static class JsonOutputFormatter
     {
+        [RequiresUnreferencedCode("Calls System.Text.Json.JsonSerializer.Serialize<TValue>(TValue, JsonSerializerOptions)")]
         public static string FormatStructuredOutput(List<User> users, List<Group> groups,
             List<Computer> computers)
         {

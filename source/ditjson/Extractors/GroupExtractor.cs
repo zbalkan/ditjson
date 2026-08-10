@@ -11,23 +11,29 @@ namespace ditjson.Extractors
         internal static Group ExtractGroup(Session session, JET_TABLEID table, int recordId,
             IDictionary<string, JET_COLUMNID> columnDict)
         {
+            var sid = string.Empty;
+            if (Environment.OSVersion.Platform == PlatformID.Win32NT)
+            {
+                sid = SidDecoder.Decode(ColumnExtractor.GetBinary(session, table, columnDict,
+                    "ATTr589970")) ?? string.Empty;
+            }
+
             var group = new Group
             {
                 RecordId = recordId,
-                Name = ColumnExtractor.GetString(session, table, columnDict, "ATTm131220"),
+                Name = ColumnExtractor.GetString(session, table, columnDict, "ATTm131220")!,
                 ObjectClass = "group",
                 ObjectGuid = GuidDecoder.Decode(ColumnExtractor.GetBinary(session, table,
                     columnDict, "ATTb131353")),
-                ObjectSid = SidDecoder.Decode(ColumnExtractor.GetBinary(session, table,
-                    columnDict, "ATTr589970")),
+                ObjectSid = sid,
 
                 SamAccountName = ColumnExtractor.GetString(session, table, columnDict,
-                    "ATTm590045"),
+                    "ATTm590045")!,
 
                 WhenCreated = TimestampDecoder.DecodeFromInt64(ColumnExtractor.GetInt64(
-                    session, table, columnDict, "ATTq591520")),
+                    session, table, columnDict, "ATTq591520"))!,
                 WhenChanged = TimestampDecoder.DecodeFromInt64(ColumnExtractor.GetInt64(
-                    session, table, columnDict, "ATTq591521")),
+                    session, table, columnDict, "ATTq591521"))!,
 
                 IsDeleted = ColumnExtractor.GetString(session, table, columnDict,
                     "ATTb589825") != null,

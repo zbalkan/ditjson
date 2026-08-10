@@ -68,7 +68,7 @@ namespace ditjson.Extractors
             }
         }
 
-        private static void ProcessMemberOf(int sourceRecordId, int targetRecordId, string deletedTime,
+        private static void ProcessMemberOf(int sourceRecordId, int targetRecordId, string? deletedTime,
             Dictionary<int, User> userDict, Dictionary<int, Computer> computerDict, Dictionary<int, Group> groupDict)
         {
             if (!groupDict.TryGetValue(targetRecordId, out var targetGroup))
@@ -98,13 +98,13 @@ namespace ditjson.Extractors
             }
         }
 
-        private static void ProcessMember(int sourceRecordId, int targetRecordId, string deletedTime,
+        private static void ProcessMember(int sourceRecordId, int targetRecordId, string? deletedTime,
             Dictionary<int, Group> groupDict, Dictionary<int, User> userDict, Dictionary<int, Computer> computerDict)
         {
             if (!groupDict.TryGetValue(sourceRecordId, out var group))
                 return;
 
-            GroupMember member = null;
+            GroupMember? member = null;
 
             if (userDict.TryGetValue(targetRecordId, out var user))
             {

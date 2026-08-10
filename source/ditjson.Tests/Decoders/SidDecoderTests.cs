@@ -1,4 +1,3 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using ditjson.Decoders;
 
 namespace ditjson.Tests.Decoders;
@@ -7,6 +6,7 @@ namespace ditjson.Tests.Decoders;
 public class SidDecoderTests
 {
     [TestMethod]
+    [OSCondition(OperatingSystems.Windows)]
     public void Decode_WithValidUserSid_ReturnsCorrectFormat()
     {
         // Arrange: Common user SID (S-1-5-21-domain-domain-domain-500)
@@ -28,6 +28,7 @@ public class SidDecoderTests
     }
 
     [TestMethod]
+    [OSCondition(OperatingSystems.Windows)]
     public void Decode_WithNullInput_ReturnsNull()
     {
         // Act
@@ -38,6 +39,7 @@ public class SidDecoderTests
     }
 
     [TestMethod]
+    [OSCondition(OperatingSystems.Windows)]
     public void Decode_WithEmptyArray_ReturnsNull()
     {
         // Act
@@ -48,6 +50,7 @@ public class SidDecoderTests
     }
 
     [TestMethod]
+    [OSCondition(OperatingSystems.Windows)]
     public void Decode_WithInvalidRevision_ReturnsNull()
     {
         // Arrange: Invalid revision number
@@ -66,6 +69,7 @@ public class SidDecoderTests
     }
 
     [TestMethod]
+    [OSCondition(OperatingSystems.Windows)]
     public void Decode_WithValidSid_ContainsAuthority()
     {
         // Arrange
@@ -86,6 +90,7 @@ public class SidDecoderTests
     }
 
     [TestMethod]
+    [OSCondition(OperatingSystems.Windows)]
     public void Decode_WithHexString_ReturnsValidSid()
     {
         // Arrange: Hex representation of SID

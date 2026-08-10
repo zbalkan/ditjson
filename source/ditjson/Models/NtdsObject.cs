@@ -6,10 +6,10 @@ namespace ditjson.Models
     public class NtdsObject
     {
         public int RecordId { get; set; }
-        public string Name { get; set; }
+        public string? Name { get; set; }
         public string ObjectClass { get; set; }
         public Guid ObjectGuid { get; set; }
-        public string ObjectSid { get; set; }
+        public string? ObjectSid { get; set; }
         public string WhenCreated { get; set; }
         public string WhenChanged { get; set; }
         public bool IsDeleted { get; set; }
@@ -17,10 +17,10 @@ namespace ditjson.Models
 
     public class User : NtdsObject
     {
-        public string SamAccountName { get; set; }
-        public string UserPrincipalName { get; set; }
-        public string SamAccountType { get; set; }
-        public List<string> UserAccountControl { get; set; }
+        public string? SamAccountName { get; set; }
+        public string? UserPrincipalName { get; set; }
+        public string? SamAccountType { get; set; }
+        public List<string>? UserAccountControl { get; set; }
         public int PrimaryGroupId { get; set; }
         public int LogonCount { get; set; }
         public int BadPwdCount { get; set; }
@@ -31,36 +31,36 @@ namespace ditjson.Models
         public string BadPwdTime { get; set; }
         public int DialInAccessPermission { get; set; }
 
-        public PasswordHashes PasswordHashes { get; set; }
-        public List<string> PasswordHistory { get; set; }
-        public SupplementalCredentials SupplementalCredentials { get; set; }
-        public string Certificate { get; set; }
+        public PasswordHashes? PasswordHashes { get; set; }
+        public List<string>? PasswordHistory { get; set; }
+        public SupplementalCredentials? SupplementalCredentials { get; set; }
+        public string? Certificate { get; set; }
 
-        public List<NtdsObject> Ancestors { get; set; }
-        public List<GroupMembership> MemberOf { get; set; }
+        public List<NtdsObject>? Ancestors { get; set; }
+        public List<GroupMembership>? MemberOf { get; set; }
     }
 
     public class Group : NtdsObject
     {
-        public string SamAccountName { get; set; }
-        public string GroupType { get; set; }
-        public List<GroupMember> Members { get; set; }
+        public string? SamAccountName { get; set; }
+        public string? GroupType { get; set; }
+        public List<GroupMember>? Members { get; set; }
     }
 
     public class Computer : NtdsObject
     {
-        public string SamAccountName { get; set; }
+        public string? SamAccountName { get; set; }
         public string DnsHostName { get; set; }
         public string OperatingSystem { get; set; }
-        public string OperatingSystemVersion { get; set; }
+        public string? OperatingSystemVersion { get; set; }
         public string PasswordLastSet { get; set; }
         public int DialInAccessPermission { get; set; }
 
-        public PasswordHashes PasswordHashes { get; set; }
-        public SupplementalCredentials SupplementalCredentials { get; set; }
-        public BitLockerRecovery Recovery { get; set; }
+        public PasswordHashes? PasswordHashes { get; set; }
+        public SupplementalCredentials? SupplementalCredentials { get; set; }
+        public BitLockerRecovery? Recovery { get; set; }
 
-        public List<GroupMembership> MemberOf { get; set; }
+        public List<GroupMembership>? MemberOf { get; set; }
     }
 
     public class PasswordHashes
@@ -72,21 +72,21 @@ namespace ditjson.Models
     public class GroupMembership
     {
         public int RecordId { get; set; }
-        public string Name { get; set; }
+        public string? Name { get; set; }
         public Guid ObjectGuid { get; set; }
-        public string ObjectSid { get; set; }
+        public string? ObjectSid { get; set; }
         public bool IsPrimaryGroup { get; set; }
-        public string DeletedTime { get; set; }
+        public string? DeletedTime { get; set; }
     }
 
     public class GroupMember
     {
         public int RecordId { get; set; }
-        public string Name { get; set; }
+        public string? Name { get; set; }
         public Guid ObjectGuid { get; set; }
         public string ObjectClass { get; set; }
         public bool IsPrimaryGroup { get; set; }
-        public string DeletedTime { get; set; }
+        public string? DeletedTime { get; set; }
     }
 
     public class SupplementalCredentials

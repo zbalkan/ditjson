@@ -11,32 +11,37 @@ namespace ditjson.Extractors
         internal static Computer ExtractComputer(Session session, JET_TABLEID table, int recordId,
             IDictionary<string, JET_COLUMNID> columnDict)
         {
+            var sid = string.Empty;
+            if(Environment.OSVersion.Platform == PlatformID.Win32NT)
+            {
+                sid = SidDecoder.Decode(ColumnExtractor.GetBinary(session, table, columnDict, "ATTr589970")) ?? string.Empty;
+            }
             var computer = new Computer
             {
                 RecordId = recordId,
-                Name = ColumnExtractor.GetString(session, table, columnDict, "ATTm131220"),
+                Name = ColumnExtractor.GetString(session, table, columnDict, "ATTm131220")!,
                 ObjectClass = "computer",
                 ObjectGuid = GuidDecoder.Decode(ColumnExtractor.GetBinary(session, table,
                     columnDict, "ATTb131353")),
-                ObjectSid = SidDecoder.Decode(ColumnExtractor.GetBinary(session, table,
-                    columnDict, "ATTr589970")),
+                
+                ObjectSid = sid,
 
                 SamAccountName = ColumnExtractor.GetString(session, table, columnDict,
-                    "ATTm590045"),
+                    "ATTm590045")!,
                 DnsHostName = ColumnExtractor.GetString(session, table, columnDict,
-                    "ATTm1677470"),
+                    "ATTm1677470")!,
                 OperatingSystem = ColumnExtractor.GetString(session, table, columnDict,
-                    "ATTm590280"),
+                    "ATTm590280")!,
                 OperatingSystemVersion = ColumnExtractor.GetString(session, table, columnDict,
-                    "ATTm590281"),
+                    "ATTm590281")!,
 
                 WhenCreated = TimestampDecoder.DecodeFromInt64(ColumnExtractor.GetInt64(
-                    session, table, columnDict, "ATTq591520")),
+                    session, table, columnDict, "ATTq591520"))!,
                 WhenChanged = TimestampDecoder.DecodeFromInt64(ColumnExtractor.GetInt64(
-                    session, table, columnDict, "ATTq591521")),
+                    session, table, columnDict, "ATTq591521"))!,
 
                 PasswordLastSet = TimestampDecoder.DecodeFromInt64(ColumnExtractor.GetInt64(
-                    session, table, columnDict, "ATTq589926")),
+                    session, table, columnDict, "ATTq589926"))!,
 
                 DialInAccessPermission = ColumnExtractor.GetInt32(session, table, columnDict,
                     "ATTj590093"),

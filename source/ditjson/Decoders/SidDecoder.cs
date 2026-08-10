@@ -5,6 +5,7 @@ namespace ditjson.Decoders
 {
     internal static class SidDecoder
     {
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Interoperability", "CA1416:Validate platform compatibility", Justification = "<Pending>")]
         internal static string? Decode(byte[]? sidBytes)
         {
             if (sidBytes == null || sidBytes.Length < 8)

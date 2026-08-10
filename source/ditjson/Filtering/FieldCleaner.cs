@@ -60,11 +60,11 @@ namespace ditjson.Filtering
             if (computer == null)
                 return;
 
-            computer.Name = CleanString(computer.Name);
-            computer.SamAccountName = CleanString(computer!.SamAccountName);
-            computer.DnsHostName = CleanString(computer.DnsHostName);
-            computer.OperatingSystem = CleanString(computer.OperatingSystem);
-            computer.OperatingSystemVersion = CleanString(computer.OperatingSystemVersion);
+            computer.Name = CleanString(computer.Name)!;
+            computer.SamAccountName = CleanString(computer!.SamAccountName)!;
+            computer.DnsHostName = CleanString(computer.DnsHostName)!;
+            computer.OperatingSystem = CleanString(computer.OperatingSystem)!;
+            computer.OperatingSystemVersion = CleanString(computer.OperatingSystemVersion)!;
 
             if (computer.DialInAccessPermission < 0)
                 computer.DialInAccessPermission = 0;

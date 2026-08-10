@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -28,6 +29,7 @@ namespace ditjson.Querying
             public static readonly string[] Computers = Compose(Base, ComputerExtended, new[] { "passwordLastSet", "passwordHashes" });
         }
 
+        [RequiresUnreferencedCode("Calls ditjson.Querying.CrownJewelsFilter.BuildOutputJson(JsonElement, List<JsonElement>)")]
         public static string ApplyCrownJewels(string jsonData)
         {
             try
@@ -60,6 +62,7 @@ namespace ditjson.Querying
             }
         }
 
+        [RequiresUnreferencedCode("Calls ditjson.Querying.CrownJewelsFilter.ProjectElement(JsonElement, String[])")]
         private static List<JsonElement> QueryByGroup(JsonElement users, string groupName, Func<JsonElement, bool> additionalFilter, string[] fields, string logMessage)
         {
             Console.WriteLine(logMessage);
@@ -79,6 +82,7 @@ namespace ditjson.Querying
             return results;
         }
 
+        [RequiresUnreferencedCode("Calls ditjson.Querying.CrownJewelsFilter.ProjectElement(JsonElement, String[])")]
         private static List<JsonElement> QueryByFlag(JsonElement users, string flag, Func<JsonElement, bool> additionalFilter, string[] fields, string logMessage)
         {
             Console.WriteLine(logMessage);
@@ -98,6 +102,7 @@ namespace ditjson.Querying
             return results;
         }
 
+        [RequiresUnreferencedCode("Calls ditjson.Querying.CrownJewelsFilter.ProjectElement(JsonElement, String[])")]
         private static List<JsonElement> QueryByCleartext(JsonElement users, string logMessage)
         {
             Console.WriteLine(logMessage);
@@ -120,6 +125,7 @@ namespace ditjson.Querying
             return results;
         }
 
+        [RequiresUnreferencedCode("Calls ditjson.Querying.CrownJewelsFilter.ProjectElement(JsonElement, String[])")]
         private static List<JsonElement> QueryByKerberos(JsonElement users, string logMessage)
         {
             Console.WriteLine(logMessage);
@@ -142,6 +148,7 @@ namespace ditjson.Querying
             return results;
         }
 
+        [RequiresUnreferencedCode("Calls ditjson.Querying.CrownJewelsFilter.ProjectElement(JsonElement, String[])")]
         private static List<JsonElement> QueryServiceAccounts(JsonElement users, string logMessage)
         {
             Console.WriteLine(logMessage);
@@ -168,6 +175,7 @@ namespace ditjson.Querying
             return results;
         }
 
+        [RequiresUnreferencedCode("Calls ditjson.Querying.CrownJewelsFilter.ProjectElement(JsonElement, String[])")]
         private static List<JsonElement> QueryRecentlyActive(JsonElement users, string logMessage)
         {
             Console.WriteLine(logMessage);
@@ -191,6 +199,7 @@ namespace ditjson.Querying
             return results;
         }
 
+        [RequiresUnreferencedCode("Calls ditjson.Querying.CrownJewelsFilter.ProjectElement(JsonElement, String[])")]
         private static List<JsonElement> QueryStaleComputers(JsonElement computers, string logMessage)
         {
             Console.WriteLine(logMessage);
@@ -253,6 +262,7 @@ namespace ditjson.Querying
             return false;
         }
 
+        [RequiresUnreferencedCode("Calls System.Text.Json.JsonSerializer.Deserialize<TValue>(String, JsonSerializerOptions)")]
         private static JsonElement ProjectElement(JsonElement element, string[] fields)
         {
             var dict = new Dictionary<string, object?>();
@@ -269,6 +279,7 @@ namespace ditjson.Querying
             return JsonDocument.Parse(json).RootElement.Clone();
         }
 
+        [RequiresUnreferencedCode("Calls System.Text.Json.JsonSerializer.Deserialize<TValue>(String, JsonSerializerOptions)")]
         private static string BuildOutputJson(JsonElement metadata, List<JsonElement> results)
         {
             var options = new JsonSerializerOptions

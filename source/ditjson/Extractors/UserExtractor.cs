@@ -11,37 +11,43 @@ namespace ditjson.Extractors
         internal static User ExtractUser(Session session, JET_TABLEID table, int recordId,
             IDictionary<string, JET_COLUMNID> columnDict)
         {
+            var sid = string.Empty;
+            if (Environment.OSVersion.Platform == PlatformID.Win32NT)
+            {
+                sid = SidDecoder.Decode(ColumnExtractor.GetBinary(session, table, columnDict,
+                    "ATTr589970")) ?? string.Empty;
+            }
+
             var user = new User
             {
                 RecordId = recordId,
-                Name = ColumnExtractor.GetString(session, table, columnDict, "ATTm131220"),
+                Name = ColumnExtractor.GetString(session, table, columnDict, "ATTm131220")!,
                 ObjectClass = "user",
                 ObjectGuid = GuidDecoder.Decode(ColumnExtractor.GetBinary(session, table,
                     columnDict, "ATTb131353")),
-                ObjectSid = SidDecoder.Decode(ColumnExtractor.GetBinary(session, table,
-                    columnDict, "ATTr589970")),
+                ObjectSid = sid,
 
                 SamAccountName = ColumnExtractor.GetString(session, table, columnDict,
-                    "ATTm590045"),
+                    "ATTm590045")!,
                 UserPrincipalName = ColumnExtractor.GetString(session, table, columnDict,
-                    "ATTm590480"),
+                    "ATTm590480")!,
 
                 WhenCreated = TimestampDecoder.DecodeFromInt64(ColumnExtractor.GetInt64(
-                    session, table, columnDict, "ATTq591520")),
+                    session, table, columnDict, "ATTq591520"))!,
                 WhenChanged = TimestampDecoder.DecodeFromInt64(ColumnExtractor.GetInt64(
-                    session, table, columnDict, "ATTq591521")),
+                    session, table, columnDict, "ATTq591521"))!,
 
                 PasswordLastSet = TimestampDecoder.DecodeFromInt64(ColumnExtractor.GetInt64(
-                    session, table, columnDict, "ATTq589926")),
+                    session, table, columnDict, "ATTq589926"))!,
                 LastLogon = TimestampDecoder.DecodeFromInt64(ColumnExtractor.GetInt64(
-                    session, table, columnDict, "ATTq589876")),
+                    session, table, columnDict, "ATTq589876"))!,
                 LastLogonTimeStamp = TimestampDecoder.DecodeFromInt64(
                     ColumnExtractor.GetInt64(session, table, columnDict,
-                        "ATTq591983")),
+                        "ATTq591983"))!,
                 AccountExpires = TimestampDecoder.DecodeFromInt64(ColumnExtractor.GetInt64(
-                    session, table, columnDict, "ATTq589960")),
+                    session, table, columnDict, "ATTq589960"))!,
                 BadPwdTime = TimestampDecoder.DecodeFromInt64(ColumnExtractor.GetInt64(
-                    session, table, columnDict, "ATTq591923")),
+                    session, table, columnDict, "ATTq591923"))!,
 
                 LogonCount = ColumnExtractor.GetInt32(session, table, columnDict,
                     "ATTj589875"),
