@@ -50,17 +50,32 @@ namespace ditjson.Extractors
         {
             try
             {
-                var pwdHistoryData = ColumnExtractor.GetBinary(
+                var ntHistoryData = ColumnExtractor.GetBinary(
                     session, table, columnDict, NtdsColumnNames.NtHashHistory);
-                if (pwdHistoryData == null || pwdHistoryData.Length == 0)
+                var lmHistoryData = ColumnExtractor.GetBinary(
+                    session, table, columnDict, NtdsColumnNames.LmHashHistory);
+                if ((ntHistoryData == null || ntHistoryData.Length == 0) &&
+                    (lmHistoryData == null || lmHistoryData.Length == 0))
                 {
                     return;
                 }
 
-                var hashes = ParsePasswordHistory(pwdHistoryData, peks, PasswordHashDecryptor.GetRid(user.ObjectSid));
-                if (hashes != null && hashes.Count > 0)
+                var rid = PasswordHashDecryptor.GetRid(user.ObjectSid);
+                if (ntHistoryData != null && ntHistoryData.Length > 0)
                 {
-                    user.PasswordHistory = hashes;
+                    var hashes = ParsePasswordHistory(ntHistoryData, peks, rid);
+                    if (hashes.Count > 0)
+                    {
+                        user.PasswordHistory = hashes;
+                    }
+                }
+                if (lmHistoryData != null && lmHistoryData.Length > 0)
+                {
+                    var hashes = ParsePasswordHistory(lmHistoryData, peks, rid);
+                    if (hashes.Count > 0)
+                    {
+                        user.LmPasswordHistory = hashes;
+                    }
                 }
             }
             catch (Exception ex)

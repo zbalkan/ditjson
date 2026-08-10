@@ -52,19 +52,19 @@ namespace ditjson.Extractors
         internal string ReadClassName(int keyCell)
         {
             RequireSignature(keyCell, Nk, "nk");
-            var at = Absolute(keyCell);
+            var at = Payload(keyCell);
             var offset = ReadInt32(at + 0x30);
             var length = ReadUInt16(at + 0x4a);
             return length == 0 || offset < 0
                 ? string.Empty
-                : Encoding.Unicode.GetString(ReadBytes(Absolute(offset) + 4, length)).TrimEnd('\0');
+                : Encoding.Unicode.GetString(ReadBytes(Payload(offset), length)).TrimEnd('\0');
         }
 
         internal byte[]? ReadValue(int keyCell, string name)
         {
             RequireSignature(keyCell, Nk, "nk");
-            var count = ReadInt32(Absolute(keyCell) + 0x24);
-            var list = ReadInt32(Absolute(keyCell) + 0x28);
+            var count = ReadInt32(Payload(keyCell) + 0x24);
+            var list = ReadInt32(Payload(keyCell) + 0x28);
             if (count <= 0 || list < 0)
             {
                 return null;
@@ -72,9 +72,9 @@ namespace ditjson.Extractors
 
             for (var i = 0; i < count; i++)
             {
-                var valueCell = ReadInt32(Absolute(list) + 4 + i * 4);
+                var valueCell = ReadInt32(Payload(list) + i * 4);
                 RequireSignature(valueCell, Vk, "vk");
-                var at = Absolute(valueCell);
+                var at = Payload(valueCell);
                 var nameLength = ReadUInt16(at + 2);
                 var ascii = (ReadUInt16(at + 0x10) & 1) != 0;
                 var valueName = nameLength == 0
@@ -90,7 +90,7 @@ namespace ditjson.Extractors
                 var dataOffset = at + 8;
                 return (rawLength & 0x80000000) != 0
                     ? ReadBytes(dataOffset, Math.Min(length, 4))
-                    : ReadBytes(Absolute(ReadInt32(dataOffset)) + 4, length);
+                    : ReadBytes(Payload(ReadInt32(dataOffset)), length);
             }
 
             return null;
@@ -99,21 +99,21 @@ namespace ditjson.Extractors
         private int FindSubkey(int keyCell, string name)
         {
             RequireSignature(keyCell, Nk, "nk");
-            var count = ReadInt32(Absolute(keyCell) + 0x14);
-            var list = ReadInt32(Absolute(keyCell) + 0x1c);
+            var count = ReadInt32(Payload(keyCell) + 0x14);
+            var list = ReadInt32(Payload(keyCell) + 0x1c);
             return count <= 0 || list < 0 ? -1 : FindInSubkeyList(list, name);
         }
 
         private int FindInSubkeyList(int listCell, string name)
         {
-            var at = Absolute(listCell);
-            var signature = ReadUInt16(at + 4);
-            var count = ReadUInt16(at + 6);
+            var at = Payload(listCell);
+            var signature = ReadUInt16(at);
+            var count = ReadUInt16(at + 2);
             if (signature == Ri)
             {
                 for (var i = 0; i < count; i++)
                 {
-                    var found = FindInSubkeyList(ReadInt32(at + 8 + i * 4), name);
+                    var found = FindInSubkeyList(ReadInt32(at + 4 + i * 4), name);
                     if (found >= 0)
                     {
                         return found;
@@ -131,7 +131,7 @@ namespace ditjson.Extractors
 
             for (var i = 0; i < count; i++)
             {
-                var child = ReadInt32(at + 8 + i * stride);
+                var child = ReadInt32(at + 4 + i * stride);
                 if (KeyNameEquals(child, name))
                 {
                     return child;
@@ -144,9 +144,9 @@ namespace ditjson.Extractors
         private bool KeyNameEquals(int cell, string requestedName)
         {
             RequireSignature(cell, Nk, "nk");
-            var at = Absolute(cell);
+            var at = Payload(cell);
             var length = ReadUInt16(at + 0x48);
-            var ascii = (ReadUInt16(at + 6) & 0x20) != 0;
+            var ascii = (ReadUInt16(at + 2) & 0x20) != 0;
             if ((ascii && length != requestedName.Length) || (!ascii && length != requestedName.Length * 2))
             {
                 return false;
@@ -173,13 +173,15 @@ namespace ditjson.Extractors
 
         private void RequireSignature(int cell, ushort expected, string name)
         {
-            if (cell < 0 || ReadUInt16(Absolute(cell) + 4) != expected)
+            if (cell < 0 || ReadUInt16(Payload(cell)) != expected)
             {
                 throw new InvalidDataException($"Invalid {name} cell");
             }
         }
 
         private static long Absolute(int relative) => HbinBase + (long)relative;
+
+        private static long Payload(int relative) => Absolute(relative) + sizeof(int);
 
         private byte[] ReadBytes(long offset, int count)
         {

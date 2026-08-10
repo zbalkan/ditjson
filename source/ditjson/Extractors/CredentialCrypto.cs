@@ -71,7 +71,9 @@ namespace ditjson.Extractors
             }
 
             var version = BitConverter.ToUInt32(blob, 0);
-            var index = BitConverter.ToUInt32(blob, 4);
+            // The PEK index is the fifth byte of the eight-byte header.  The
+            // remaining three bytes are header data, not part of the index.
+            var index = blob[4];
             if (index >= peks.Count)
             {
                 throw new InvalidDataException($"Unknown PEK index {index}");
@@ -149,15 +151,26 @@ namespace ditjson.Extractors
 
         private static byte[] AesDecrypt(byte[] key, byte[] iv, byte[] cipher)
         {
-            if (cipher.Length % 16 != 0)
+            if (cipher.Length == 0)
             {
-                throw new InvalidDataException("AES ciphertext is not block aligned");
+                return Array.Empty<byte>();
             }
 
+            // secretsdump's decryptAES zero-pads a short final ciphertext
+            // block. NTDS blobs are normally aligned, but preserving that
+            // behavior allows damaged/truncated final padding to be handled
+            // without losing the preceding complete blocks.
+            var alignedLength = (cipher.Length + 15) & ~15;
+            var alignedCipher = cipher;
+            if (alignedLength != cipher.Length)
+            {
+                alignedCipher = new byte[alignedLength];
+                Buffer.BlockCopy(cipher, 0, alignedCipher, 0, cipher.Length);
+            }
             using var aes = Aes.Create();
             aes.Key = key; aes.IV = iv; aes.Mode = CipherMode.CBC; aes.Padding = PaddingMode.None;
             using var decryptor = aes.CreateDecryptor();
-            return decryptor.TransformFinalBlock(cipher, 0, cipher.Length);
+            return decryptor.TransformFinalBlock(alignedCipher, 0, alignedCipher.Length);
         }
 
         private static void DesDecrypt(byte[] key, byte[] input, int inputOffset, byte[] output, int outputOffset)

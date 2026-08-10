@@ -94,6 +94,7 @@ namespace ditjson.Models
         public int LogonCount { get; set; }
         public List<GroupMembership>? MemberOf { get; set; }
         public PasswordHashes? PasswordHashes { get; set; }
+        public List<string>? LmPasswordHistory { get; set; }
         public List<string>? PasswordHistory { get; set; }
         public string? PasswordLastSet { get; set; }
         public int PrimaryGroupId { get; set; }

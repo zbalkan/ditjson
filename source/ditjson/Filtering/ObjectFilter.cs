@@ -72,6 +72,10 @@ namespace ditjson.Filtering
                 {
                     user.PasswordHistory = null;
                 }
+                if (user.LmPasswordHistory != null && user.LmPasswordHistory.Count == 0)
+                {
+                    user.LmPasswordHistory = null;
+                }
             }
 
             if (user.PasswordHashes != null && string.IsNullOrEmpty(user.PasswordHashes.NtHash)

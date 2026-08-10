@@ -97,4 +97,14 @@ public class SidDecoderTests
         Assert.IsNotNull(result);
         Assert.StartsWith("S-1-5-", result);
     }
+
+    [TestMethod]
+    public void DecodeNtds_ReadsBigEndianSubAuthorities()
+    {
+        var sid = Convert.FromHexString("010200000000000500000015000001F4");
+
+        var result = SidDecoder.DecodeNtds(sid);
+
+        Assert.AreEqual("S-1-5-21-500", result);
+    }
 }

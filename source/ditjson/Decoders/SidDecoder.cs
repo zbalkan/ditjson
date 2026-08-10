@@ -1,4 +1,5 @@
 using System;
+using System.Buffers.Binary;
 using System.Text;
 
 namespace ditjson.Decoders
@@ -8,6 +9,19 @@ namespace ditjson.Decoders
         // Manual binary SID parsing instead of System.Security.Principal.SecurityIdentifier,
         // which throws PlatformNotSupportedException on non-Windows platforms.
         internal static string? Decode(byte[]? sidBytes)
+        {
+            return Decode(sidBytes, ntdsSubAuthorities: false);
+        }
+
+        // The ESE representation used by the ATTr objectSid column stores
+        // each sub-authority most-significant byte first. This differs from
+        // the little-endian self-relative SID returned by Win32 APIs.
+        internal static string? DecodeNtds(byte[]? sidBytes)
+        {
+            return Decode(sidBytes, ntdsSubAuthorities: true);
+        }
+
+        private static string? Decode(byte[]? sidBytes, bool ntdsSubAuthorities)
         {
             if (sidBytes == null || sidBytes.Length < 8)
             {
@@ -39,7 +53,10 @@ namespace ditjson.Decoders
                 var offset = 8;
                 for (var i = 0; i < subAuthorityCount; i++)
                 {
-                    var subAuthority = BitConverter.ToUInt32(sidBytes, offset);
+                    var bytes = sidBytes.AsSpan(offset, sizeof(uint));
+                    var subAuthority = ntdsSubAuthorities
+                        ? BinaryPrimitives.ReadUInt32BigEndian(bytes)
+                        : BinaryPrimitives.ReadUInt32LittleEndian(bytes);
                     sb.Append('-').Append(subAuthority);
                     offset += 4;
                 }

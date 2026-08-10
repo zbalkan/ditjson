@@ -18,7 +18,7 @@ namespace ditjson.Extractors
                 ObjectClass = "group",
                 ObjectGuid = GuidDecoder.Decode(ColumnExtractor.GetBinary(session, table,
                     columnDict, NtdsColumnNames.ObjectGuid)),
-                ObjectSid = SidDecoder.Decode(ColumnExtractor.GetBinary(session, table,
+                ObjectSid = SidDecoder.DecodeNtds(ColumnExtractor.GetBinary(session, table,
                     columnDict, NtdsColumnNames.ObjectSid)),
 
                 SamAccountName = ColumnExtractor.GetString(session, table, columnDict,

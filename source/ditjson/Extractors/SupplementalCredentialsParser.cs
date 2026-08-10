@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using ditjson.Models;
@@ -11,7 +12,7 @@ namespace ditjson.Extractors
     {
         // USER_PROPERTIES has four reserved scalar fields followed by a
         // 96-byte reserved buffer, a signature, and the property count.
-        private const int UserPropertiesHeaderLength = 112;
+        private const int UserPropertiesFixedHeaderLength = 110;
         private const int PropertyCountOffset = 110;
 
         internal static void ParseSupplementalCredentials(Session session, JET_DBID dbid, List<User> users, List<Computer> computers, IReadOnlyList<byte[]> peks)
@@ -23,11 +24,12 @@ namespace ditjson.Extractors
 
         private static string GetKerberosAlgorithmName(int keyType) => keyType switch
         {
-            1 => "DES_CBC_MD5",
+            1 => "DES_CBC_CRC",
             3 => "DES_CBC_MD5",
             17 => "AES128_CTS_HMAC_SHA1_96",
             18 => "AES256_CTS_HMAC_SHA1_96",
             23 => "RC4_HMAC_MD5",
+            unchecked((int)0xffffff74) => "RC4_HMAC_MD5",
             _ => $"UNKNOWN({keyType})"
         };
 
@@ -139,75 +141,95 @@ namespace ditjson.Extractors
         private static List<KerberosKey> ParseKerberosKeysFromBlob(byte[] data)
         {
             var keys = new List<KerberosKey>();
-            try
+            if (data.Length < 24)
             {
-                if (data.Length < 24)
-                {
-                    return keys;
-                }
-
-                var keyCount = BitConverter.ToUInt16(data, 4);
-                var offset = 24;
-                for (var i = 0; i < keyCount && offset + 24 <= data.Length; i++)
-                {
-                    var keyType = BitConverter.ToInt32(data, offset + 12);
-                    var keyLength = BitConverter.ToInt32(data, offset + 16);
-                    var keyOffset = BitConverter.ToInt32(data, offset + 20);
-                    offset += 24;
-                    if (keyOffset >= 0 && keyLength >= 0 && keyOffset + keyLength <= data.Length)
-                    {
-                        var keyData = new byte[keyLength];
-                        Array.Copy(data, keyOffset, keyData, 0, keyLength);
-                        keys.Add(new KerberosKey { Algorithm = GetKerberosAlgorithmName(keyType), Key = Convert.ToHexString(keyData) });
-                    }
-                }
                 return keys;
             }
-            catch { return keys; }
+
+            var keyCount = BitConverter.ToUInt16(data, 4);
+            var offset = 24;
+            for (var i = 0; i < keyCount; i++)
+            {
+                if (offset + 24 > data.Length)
+                {
+                    throw new InvalidDataException("Truncated KERB_KEY_DATA_NEW entry");
+                }
+                var keyType = BitConverter.ToInt32(data, offset + 12);
+                var keyLength = BitConverter.ToInt32(data, offset + 16);
+                var keyOffset = BitConverter.ToInt32(data, offset + 20);
+                offset += 24;
+                if (keyOffset < 0 || keyLength < 0 || keyOffset > data.Length - keyLength)
+                {
+                    throw new InvalidDataException("Invalid Kerberos key range");
+                }
+                keys.Add(new KerberosKey {
+                    Algorithm = GetKerberosAlgorithmName(keyType),
+                    Key = Convert.ToHexString(data.AsSpan(keyOffset, keyLength))
+                });
+            }
+            return keys;
         }
 
         internal static (string? cleartext, List<KerberosKey>? keys) ParseSupplementalCredentialsBlob(byte[] data)
         {
             string? cleartext = null;
             var keys = new List<KerberosKey>();
-            try
+            if (data.Length < UserPropertiesFixedHeaderLength + 1)
             {
-                if (data.Length < UserPropertiesHeaderLength)
-                {
-                    return (null, null);
-                }
-
-                var propertyCount = BitConverter.ToUInt16(data, PropertyCountOffset);
-                var offset = UserPropertiesHeaderLength;
-                for (var property = 0; property < propertyCount && offset + 6 <= data.Length; property++)
-                {
-                    var nameLength = BitConverter.ToUInt16(data, offset);
-                    var valueLength = BitConverter.ToUInt16(data, offset + 2);
-                    offset += 6;
-                    if (offset + nameLength + valueLength > data.Length)
-                    {
-                        break;
-                    }
-
-                    var name = Encoding.Unicode.GetString(data, offset, nameLength).TrimEnd('\0');
-                    offset += nameLength;
-                    var encodedValue = Encoding.ASCII.GetString(data, offset, valueLength);
-                    offset += valueLength;
-                    byte[] value;
-                    try { value = Convert.FromHexString(encodedValue); } catch (FormatException) { continue; }
-                    if (name == "Primary:CLEARTEXT" && value.Length > 0)
-                    {
-                        try { cleartext = new UnicodeEncoding(false, false, true).GetString(value).TrimEnd('\0'); }
-                        catch (DecoderFallbackException) { cleartext = Convert.ToHexString(value); }
-                    }
-                    else if (name == "Primary:Kerberos-Newer-Keys")
-                    {
-                        keys.AddRange(ParseKerberosKeysFromBlob(value));
-                    }
-                }
-                return (cleartext, keys.Count > 0 ? keys : null);
+                return (null, null);
             }
-            catch { return (null, null); }
+
+            var length = BitConverter.ToUInt32(data, 4);
+            var propertiesEnd = 12L + length;
+            if (propertiesEnd < UserPropertiesFixedHeaderLength || propertiesEnd >= data.Length)
+            {
+                throw new InvalidDataException("Invalid USER_PROPERTIES length");
+            }
+            if (BitConverter.ToUInt16(data, 108) != 0x50)
+            {
+                throw new InvalidDataException("Invalid USER_PROPERTIES signature");
+            }
+            // A header-only structure omits PropertyCount.
+            if (propertiesEnd == UserPropertiesFixedHeaderLength)
+            {
+                return (null, null);
+            }
+            if (propertiesEnd < PropertyCountOffset + 2)
+            {
+                throw new InvalidDataException("USER_PROPERTIES omits its property count");
+            }
+
+            var propertyCount = BitConverter.ToUInt16(data, PropertyCountOffset);
+            var offset = PropertyCountOffset + 2;
+            for (var property = 0; property < propertyCount; property++)
+            {
+                if (offset + 6 > propertiesEnd)
+                {
+                    throw new InvalidDataException("Truncated USER_PROPERTY header");
+                }
+                var nameLength = BitConverter.ToUInt16(data, offset);
+                var valueLength = BitConverter.ToUInt16(data, offset + 2);
+                offset += 6;
+                if (offset + (long)nameLength + valueLength > propertiesEnd)
+                {
+                    throw new InvalidDataException("Truncated USER_PROPERTY value");
+                }
+
+                var name = Encoding.Unicode.GetString(data, offset, nameLength).TrimEnd('\0');
+                offset += nameLength;
+                var value = Convert.FromHexString(Encoding.ASCII.GetString(data, offset, valueLength));
+                offset += valueLength;
+                if (name == "Primary:CLEARTEXT" && value.Length > 0)
+                {
+                    try { cleartext = new UnicodeEncoding(false, false, true).GetString(value).TrimEnd('\0'); }
+                    catch (DecoderFallbackException) { cleartext = Convert.ToHexString(value); }
+                }
+                else if (name == "Primary:Kerberos-Newer-Keys")
+                {
+                    keys.AddRange(ParseKerberosKeysFromBlob(value));
+                }
+            }
+            return (cleartext, keys.Count > 0 ? keys : null);
         }
 
         private static void ParseUserCredentials(Session session, JET_DBID dbid, List<User> users, IReadOnlyList<byte[]> peks)

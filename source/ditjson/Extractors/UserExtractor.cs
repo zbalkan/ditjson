@@ -18,7 +18,7 @@ namespace ditjson.Extractors
                 ObjectClass = "user",
                 ObjectGuid = GuidDecoder.Decode(ColumnExtractor.GetBinary(session, table,
                     columnDict, NtdsColumnNames.ObjectGuid)),
-                ObjectSid = SidDecoder.Decode(ColumnExtractor.GetBinary(session, table,
+                ObjectSid = SidDecoder.DecodeNtds(ColumnExtractor.GetBinary(session, table,
                     columnDict, NtdsColumnNames.ObjectSid)),
 
                 SamAccountName = ColumnExtractor.GetString(session, table, columnDict,
@@ -76,7 +76,6 @@ namespace ditjson.Extractors
 
             user.Ancestors = [];
             user.MemberOf = [];
-            user.PasswordHistory = [];
 
             return user;
         }

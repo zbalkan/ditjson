@@ -39,6 +39,24 @@ public sealed class RegistryHiveTests
         }
     }
 
+    [TestMethod]
+    public void ReadsClassNameAndInlineValueFromCellPayloads()
+    {
+        var path = CreateHive();
+        try
+        {
+            using var hive = new RegistryHive(path);
+            var key = hive.OpenKey(@"Software\TËST");
+
+            Assert.AreEqual("0011223344556677", hive.ReadClassName(key));
+            Assert.AreSequenceEqual(BitConverter.GetBytes(7), hive.ReadValue(key, "Current")!);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     private static string CreateHive()
     {
         const int hbin = 0x1000;
@@ -51,31 +69,51 @@ public sealed class RegistryHiveTests
         WriteList(bytes, hbin, 0x180, "lh", 0x200);
         WriteKey(bytes, hbin, 0x200, "Software", compressed: true, subkeyList: 0x280);
         WriteList(bytes, hbin, 0x280, "li", 0x300);
-        WriteKey(bytes, hbin, 0x300, "Tëst", compressed: false, subkeyList: -1);
+        WriteKey(bytes, hbin, 0x300, "Tëst", compressed: false, subkeyList: -1,
+            classCell: 0x400, valueList: 0x480);
+        Encoding.Unicode.GetBytes("0011223344556677").CopyTo(bytes, hbin + 0x400 + 4);
+        WriteInt32(bytes, hbin + 0x480 + 4, 0x500);
+        WriteValue(bytes, hbin, 0x500, "Current", BitConverter.GetBytes(7));
 
         var path = Path.Combine(Path.GetTempPath(), $"ditjson-{Guid.NewGuid():N}.hive");
         File.WriteAllBytes(path, bytes);
         return path;
     }
 
-    private static void WriteKey(byte[] hive, int hbin, int cell, string name, bool compressed, int subkeyList)
+    private static void WriteKey(byte[] hive, int hbin, int cell, string name, bool compressed, int subkeyList,
+        int classCell = -1, int valueList = -1)
     {
-        var at = hbin + cell;
-        WriteAscii(hive, at + 4, "nk");
-        WriteUInt16(hive, at + 6, compressed ? (ushort)0x20 : (ushort)0);
+        var at = hbin + cell + 4;
+        WriteAscii(hive, at, "nk");
+        WriteUInt16(hive, at + 2, compressed ? (ushort)0x20 : (ushort)0);
         WriteInt32(hive, at + 0x14, subkeyList < 0 ? 0 : 1);
         WriteInt32(hive, at + 0x1c, subkeyList);
+        WriteInt32(hive, at + 0x24, valueList < 0 ? 0 : 1);
+        WriteInt32(hive, at + 0x28, valueList);
+        WriteInt32(hive, at + 0x30, classCell);
         var nameBytes = (compressed ? Encoding.ASCII : Encoding.Unicode).GetBytes(name);
         WriteUInt16(hive, at + 0x48, (ushort)nameBytes.Length);
+        WriteUInt16(hive, at + 0x4a, classCell < 0 ? (ushort)0 : (ushort)32);
         nameBytes.CopyTo(hive, at + 0x4c);
     }
 
     private static void WriteList(byte[] hive, int hbin, int cell, string signature, int child)
     {
-        var at = hbin + cell;
-        WriteAscii(hive, at + 4, signature);
-        WriteUInt16(hive, at + 6, 1);
-        WriteInt32(hive, at + 8, child);
+        var at = hbin + cell + 4;
+        WriteAscii(hive, at, signature);
+        WriteUInt16(hive, at + 2, 1);
+        WriteInt32(hive, at + 4, child);
+    }
+
+    private static void WriteValue(byte[] hive, int hbin, int cell, string name, byte[] value)
+    {
+        var at = hbin + cell + 4;
+        WriteAscii(hive, at, "vk");
+        WriteUInt16(hive, at + 2, (ushort)name.Length);
+        WriteUInt32(hive, at + 4, 0x80000000u | (uint)value.Length);
+        value.CopyTo(hive, at + 8);
+        WriteUInt16(hive, at + 0x10, 1);
+        WriteAscii(hive, at + 0x14, name);
     }
 
     private static void WriteAscii(byte[] destination, int offset, string value) =>
