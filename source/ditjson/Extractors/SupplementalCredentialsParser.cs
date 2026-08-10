@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.Isam.Esent.Interop;
 using ditjson.Models;
+using Microsoft.Isam.Esent.Interop;
 
 namespace ditjson.Extractors
 {
@@ -15,38 +15,15 @@ namespace ditjson.Extractors
             ParseComputerCredentials(session, dbid, computers);
         }
 
-        private static void ParseUserCredentials(Session session, JET_DBID dbid, List<User> users)
+        private static string GetKerberosAlgorithmName(int keyType) => keyType switch
         {
-            if (users == null || users.Count == 0)
-                return;
-
-            try
-            {
-                using var table = new Table(session, dbid, "datatable", OpenTableGrbit.ReadOnly);
-                var columnDict = Api.GetColumnDictionary(session, table);
-                var userDict = users.ToDictionary(u => u.RecordId);
-
-                Api.JetSetTableSequential(session, table, SetTableSequentialGrbit.None);
-                Api.MoveBeforeFirst(session, table);
-
-                var recordId = 1;
-                while (Api.TryMoveNext(session, table))
-                {
-                    var currentRecordId = ColumnExtractor.GetRecordId(session, table, columnDict, recordId);
-                    if (userDict.TryGetValue(currentRecordId, out var user))
-                    {
-                        ParseCredentialsForUser(session, table, columnDict, user);
-                    }
-                    recordId++;
-                }
-
-                Api.JetResetTableSequential(session, table, ResetTableSequentialGrbit.None);
-            }
-            catch (Exception ex)
-            {
-                Console.Error.WriteLine($"[!] Error parsing user credentials: {ex.Message}");
-            }
-        }
+            1 => "DES_CBC_MD5",
+            3 => "DES_CBC_MD5",
+            17 => "AES128_CTS_HMAC_SHA1_96",
+            18 => "AES256_CTS_HMAC_SHA1_96",
+            23 => "RC4_HMAC_MD5",
+            _ => $"UNKNOWN({keyType})"
+        };
 
         private static void ParseComputerCredentials(Session session, JET_DBID dbid, List<Computer> computers)
         {
@@ -81,6 +58,35 @@ namespace ditjson.Extractors
             }
         }
 
+        private static void ParseCredentialsForComputer(Session session, JET_TABLEID table,
+            IDictionary<string, JET_COLUMNID> columnDict, Computer computer)
+        {
+            try
+            {
+                var supCredData = ColumnExtractor.GetBinary(
+                    session, table, columnDict, NtdsColumnNames.SupplementalCredentials);
+                if (supCredData == null || supCredData.Length == 0)
+                    return;
+
+                var (cleartext, kerberosKeys) = ParseSupplementalCredentialsBlob(supCredData);
+
+                if (!string.IsNullOrEmpty(cleartext) || (kerberosKeys != null && kerberosKeys.Count > 0))
+                {
+                    computer.SupplementalCredentials ??= new SupplementalCredentials();
+
+                    if (!string.IsNullOrEmpty(cleartext))
+                        computer.SupplementalCredentials.ClearTextPassword = cleartext;
+
+                    if (kerberosKeys != null && kerberosKeys.Count > 0)
+                        computer.SupplementalCredentials.KerberosKeys = kerberosKeys;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"[!] Error parsing supplemental credentials for computer {computer.SamAccountName}: {ex.Message}");
+            }
+        }
+
         private static void ParseCredentialsForUser(Session session, JET_TABLEID table,
             IDictionary<string, JET_COLUMNID> columnDict, User user)
         {
@@ -110,32 +116,51 @@ namespace ditjson.Extractors
             }
         }
 
-        private static void ParseCredentialsForComputer(Session session, JET_TABLEID table,
-            IDictionary<string, JET_COLUMNID> columnDict, Computer computer)
+        private static List<KerberosKey> ParseKerberosKeysFromBlob(byte[] data)
         {
+            var keys = new List<KerberosKey>();
+
             try
             {
-                var supCredData = ColumnExtractor.GetBinary(
-                    session, table, columnDict, NtdsColumnNames.SupplementalCredentials);
-                if (supCredData == null || supCredData.Length == 0)
-                    return;
+                if (data.Length < 4)
+                    return keys;
 
-                var (cleartext, kerberosKeys) = ParseSupplementalCredentialsBlob(supCredData);
+                var offset = 0;
+                var keyCount = BitConverter.ToInt32(data, offset);
+                offset += 4;
 
-                if (!string.IsNullOrEmpty(cleartext) || (kerberosKeys != null && kerberosKeys.Count > 0))
+                for (var i = 0; i < keyCount && offset + 12 <= data.Length; i++)
                 {
-                    computer.SupplementalCredentials ??= new SupplementalCredentials();
+                    int reserved = BitConverter.ToInt16(data, offset);
+                    offset += 2;
+                    int keyType = BitConverter.ToInt16(data, offset);
+                    offset += 2;
+                    var keyLength = BitConverter.ToInt32(data, offset);
+                    offset += 4;
+                    var keyOffset = BitConverter.ToInt32(data, offset);
+                    offset += 4;
 
-                    if (!string.IsNullOrEmpty(cleartext))
-                        computer.SupplementalCredentials.ClearTextPassword = cleartext;
+                    if (keyOffset + keyLength <= data.Length)
+                    {
+                        var keyData = new byte[keyLength];
+                        Array.Copy(data, keyOffset, keyData, 0, keyLength);
 
-                    if (kerberosKeys != null && kerberosKeys.Count > 0)
-                        computer.SupplementalCredentials.KerberosKeys = kerberosKeys;
+                        var algorithm = GetKerberosAlgorithmName(keyType);
+                        var keyHex = BitConverter.ToString(keyData).Replace("-", "").ToUpperInvariant();
+
+                        keys.Add(new KerberosKey
+                        {
+                            Algorithm = algorithm,
+                            Key = keyHex
+                        });
+                    }
                 }
+
+                return keys;
             }
-            catch (Exception ex)
+            catch
             {
-                Console.Error.WriteLine($"[!] Error parsing supplemental credentials for computer {computer.SamAccountName}: {ex.Message}");
+                return keys;
             }
         }
 
@@ -197,62 +222,37 @@ namespace ditjson.Extractors
             }
         }
 
-        private static List<KerberosKey> ParseKerberosKeysFromBlob(byte[] data)
+        private static void ParseUserCredentials(Session session, JET_DBID dbid, List<User> users)
         {
-            var keys = new List<KerberosKey>();
+            if (users == null || users.Count == 0)
+                return;
 
             try
             {
-                if (data.Length < 4)
-                    return keys;
+                using var table = new Table(session, dbid, "datatable", OpenTableGrbit.ReadOnly);
+                var columnDict = Api.GetColumnDictionary(session, table);
+                var userDict = users.ToDictionary(u => u.RecordId);
 
-                var offset = 0;
-                var keyCount = BitConverter.ToInt32(data, offset);
-                offset += 4;
+                Api.JetSetTableSequential(session, table, SetTableSequentialGrbit.None);
+                Api.MoveBeforeFirst(session, table);
 
-                for (var i = 0; i < keyCount && offset + 12 <= data.Length; i++)
+                var recordId = 1;
+                while (Api.TryMoveNext(session, table))
                 {
-                    int reserved = BitConverter.ToInt16(data, offset);
-                    offset += 2;
-                    int keyType = BitConverter.ToInt16(data, offset);
-                    offset += 2;
-                    var keyLength = BitConverter.ToInt32(data, offset);
-                    offset += 4;
-                    var keyOffset = BitConverter.ToInt32(data, offset);
-                    offset += 4;
-
-                    if (keyOffset + keyLength <= data.Length)
+                    var currentRecordId = ColumnExtractor.GetRecordId(session, table, columnDict, recordId);
+                    if (userDict.TryGetValue(currentRecordId, out var user))
                     {
-                        var keyData = new byte[keyLength];
-                        Array.Copy(data, keyOffset, keyData, 0, keyLength);
-
-                        var algorithm = GetKerberosAlgorithmName(keyType);
-                        var keyHex = BitConverter.ToString(keyData).Replace("-", "").ToUpperInvariant();
-
-                        keys.Add(new KerberosKey
-                        {
-                            Algorithm = algorithm,
-                            Key = keyHex
-                        });
+                        ParseCredentialsForUser(session, table, columnDict, user);
                     }
+                    recordId++;
                 }
 
-                return keys;
+                Api.JetResetTableSequential(session, table, ResetTableSequentialGrbit.None);
             }
-            catch
+            catch (Exception ex)
             {
-                return keys;
+                Console.Error.WriteLine($"[!] Error parsing user credentials: {ex.Message}");
             }
         }
-
-        private static string GetKerberosAlgorithmName(int keyType) => keyType switch
-        {
-            1 => "DES_CBC_MD5",
-            3 => "DES_CBC_MD5",
-            17 => "AES128_CTS_HMAC_SHA1_96",
-            18 => "AES256_CTS_HMAC_SHA1_96",
-            23 => "RC4_HMAC_MD5",
-            _ => $"UNKNOWN({keyType})"
-        };
     }
 }

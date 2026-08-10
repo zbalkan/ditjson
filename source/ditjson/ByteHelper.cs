@@ -5,6 +5,19 @@ namespace ditjson
 {
     internal static class ByteHelper
     {
+        internal static byte[] ConvertHexStringToBytes(string hexString)
+        {
+            if (hexString.Length % 2 != 0)
+                throw new ArgumentException("Invalid hex string length");
+
+            var bytes = new byte[hexString.Length / 2];
+            for (var i = 0; i < bytes.Length; i++)
+            {
+                var byteValue = hexString.Substring(i * 2, 2);
+                bytes[i] = Convert.ToByte(byteValue, 16);
+            }
+            return bytes;
+        }
 
         /// <summary>
         ///     Return the string format of a byte array.
@@ -33,20 +46,6 @@ namespace ditjson
             }
 
             return sb.ToString();
-        }
-
-        internal static byte[] ConvertHexStringToBytes(string hexString)
-        {
-            if (hexString.Length % 2 != 0)
-                throw new ArgumentException("Invalid hex string length");
-
-            var bytes = new byte[hexString.Length / 2];
-            for (var i = 0; i < bytes.Length; i++)
-            {
-                var byteValue = hexString.Substring(i * 2, 2);
-                bytes[i] = Convert.ToByte(byteValue, 16);
-            }
-            return bytes;
         }
     }
 }

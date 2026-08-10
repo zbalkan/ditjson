@@ -5,6 +5,43 @@ namespace ditjson.Filtering
 {
     internal static class FieldCleaner
     {
+        internal static void CleanComputer(Computer? computer)
+        {
+            if (computer == null)
+                return;
+
+            computer.Name = CleanString(computer.Name)!;
+            computer.SamAccountName = CleanString(computer!.SamAccountName)!;
+            computer.DnsHostName = CleanString(computer.DnsHostName)!;
+            computer.OperatingSystem = CleanString(computer.OperatingSystem)!;
+            computer.OperatingSystemVersion = CleanString(computer.OperatingSystemVersion)!;
+
+            if (computer.DialInAccessPermission < 0)
+                computer.DialInAccessPermission = 0;
+
+            if (computer.ObjectGuid == Guid.Empty)
+                computer.ObjectGuid = Guid.Empty;
+
+            if (string.IsNullOrEmpty(computer.ObjectSid))
+                computer.ObjectSid = null;
+        }
+
+        internal static void CleanGroup(Group? group)
+        {
+            if (group == null)
+                return;
+
+            group.Name = CleanString(group.Name);
+            group.SamAccountName = CleanString(group.SamAccountName);
+            group.GroupType = CleanString(group.GroupType);
+
+            if (group.ObjectGuid == Guid.Empty)
+                group.ObjectGuid = Guid.Empty;
+
+            if (string.IsNullOrEmpty(group.ObjectSid))
+                group.ObjectSid = null;
+        }
+
         internal static void CleanUser(User? user)
         {
             if (user == null)
@@ -37,43 +74,6 @@ namespace ditjson.Filtering
             user.UserAccountControl?.RemoveAll(string.IsNullOrWhiteSpace);
             if (user.UserAccountControl != null && user.UserAccountControl.Count == 0)
                 user.UserAccountControl = null;
-        }
-
-        internal static void CleanGroup(Group? group)
-        {
-            if (group == null)
-                return;
-
-            group.Name = CleanString(group.Name);
-            group.SamAccountName = CleanString(group.SamAccountName);
-            group.GroupType = CleanString(group.GroupType);
-
-            if (group.ObjectGuid == Guid.Empty)
-                group.ObjectGuid = Guid.Empty;
-
-            if (string.IsNullOrEmpty(group.ObjectSid))
-                group.ObjectSid = null;
-        }
-
-        internal static void CleanComputer(Computer? computer)
-        {
-            if (computer == null)
-                return;
-
-            computer.Name = CleanString(computer.Name)!;
-            computer.SamAccountName = CleanString(computer!.SamAccountName)!;
-            computer.DnsHostName = CleanString(computer.DnsHostName)!;
-            computer.OperatingSystem = CleanString(computer.OperatingSystem)!;
-            computer.OperatingSystemVersion = CleanString(computer.OperatingSystemVersion)!;
-
-            if (computer.DialInAccessPermission < 0)
-                computer.DialInAccessPermission = 0;
-
-            if (computer.ObjectGuid == Guid.Empty)
-                computer.ObjectGuid = Guid.Empty;
-
-            if (string.IsNullOrEmpty(computer.ObjectSid))
-                computer.ObjectSid = null;
         }
 
         private static string? CleanString(string? value)

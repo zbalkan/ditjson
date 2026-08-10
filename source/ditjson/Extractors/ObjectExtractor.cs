@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using Microsoft.Isam.Esent.Interop;
 using ditjson.Filtering;
 using ditjson.Models;
+using Microsoft.Isam.Esent.Interop;
 
 namespace ditjson.Extractors
 {
@@ -23,67 +23,67 @@ namespace ditjson.Extractors
             try
             {
                 using var table = new Table(session, dbid, "datatable", OpenTableGrbit.ReadOnly);
-                    var columnDict = Api.GetColumnDictionary(session, table);
+                var columnDict = Api.GetColumnDictionary(session, table);
 
-                    Api.JetSetTableSequential(session, table, SetTableSequentialGrbit.None);
-                    Api.MoveBeforeFirst(session, table);
+                Api.JetSetTableSequential(session, table, SetTableSequentialGrbit.None);
+                Api.MoveBeforeFirst(session, table);
 
                 var recordId = 1;
-                    while (Api.TryMoveNext(session, table))
+                while (Api.TryMoveNext(session, table))
+                {
+                    try
                     {
-                        try
+                        // ATTj590126 is sAMAccountType. The old implementation used
+                        // ATTj590000, which is not an AD datatable column, so every
+                        // record was skipped before it could be classified.
+                        if (!columnDict.ContainsKey(NtdsColumnNames.SamAccountType))
+                            continue;
+
+                        var samAccountType = ColumnExtractor.GetInt32(
+                            session, table, columnDict, NtdsColumnNames.SamAccountType);
+                        var currentRecordId = ColumnExtractor.GetRecordId(
+                            session, table, columnDict, recordId);
+
+                        if (ObjectClassifier.IsUserObject(samAccountType))
                         {
-                            // ATTj590126 is sAMAccountType. The old implementation used
-                            // ATTj590000, which is not an AD datatable column, so every
-                            // record was skipped before it could be classified.
-                            if (!columnDict.ContainsKey(NtdsColumnNames.SamAccountType))
-                                continue;
-
-                            var samAccountType = ColumnExtractor.GetInt32(
-                                session, table, columnDict, NtdsColumnNames.SamAccountType);
-                            var currentRecordId = ColumnExtractor.GetRecordId(
-                                session, table, columnDict, recordId);
-
-                            if (ObjectClassifier.IsUserObject(samAccountType))
+                            var user = UserExtractor.ExtractUser(session, table, currentRecordId, columnDict);
+                            FieldCleaner.CleanUser(user);
+                            if (ObjectFilter.ShouldIncludeUser(user, filterOptions))
                             {
-                                var user = UserExtractor.ExtractUser(session, table, currentRecordId, columnDict);
-                                FieldCleaner.CleanUser(user);
-                                if (ObjectFilter.ShouldIncludeUser(user, filterOptions))
-                                {
-                                    ObjectFilter.CleanupUser(user, filterOptions.IncludeEmptyCollections);
-                                    users.Add(user);
-                                }
-                            }
-                            else if (ObjectClassifier.IsGroupObject(samAccountType))
-                            {
-                                var group = GroupExtractor.ExtractGroup(session, table, currentRecordId, columnDict);
-                                FieldCleaner.CleanGroup(group);
-                                if (ObjectFilter.ShouldIncludeGroup(group, filterOptions))
-                                {
-                                    ObjectFilter.CleanupGroup(group, filterOptions.IncludeEmptyCollections);
-                                    groups.Add(group);
-                                }
-                            }
-                            else if (ObjectClassifier.IsComputerObject(samAccountType))
-                            {
-                                var computer = ComputerExtractor.ExtractComputer(session, table, currentRecordId, columnDict);
-                                FieldCleaner.CleanComputer(computer);
-                                if (ObjectFilter.ShouldIncludeComputer(computer, filterOptions))
-                                {
-                                    ObjectFilter.CleanupComputer(computer, filterOptions.IncludeEmptyCollections);
-                                    computers.Add(computer);
-                                }
+                                ObjectFilter.CleanupUser(user, filterOptions.IncludeEmptyCollections);
+                                users.Add(user);
                             }
                         }
-                        catch (Exception ex)
+                        else if (ObjectClassifier.IsGroupObject(samAccountType))
                         {
-                            Console.Error.WriteLine($"[!] Error processing record {recordId}: {ex.Message}");
+                            var group = GroupExtractor.ExtractGroup(session, table, currentRecordId, columnDict);
+                            FieldCleaner.CleanGroup(group);
+                            if (ObjectFilter.ShouldIncludeGroup(group, filterOptions))
+                            {
+                                ObjectFilter.CleanupGroup(group, filterOptions.IncludeEmptyCollections);
+                                groups.Add(group);
+                            }
                         }
-
-                        recordId++;
+                        else if (ObjectClassifier.IsComputerObject(samAccountType))
+                        {
+                            var computer = ComputerExtractor.ExtractComputer(session, table, currentRecordId, columnDict);
+                            FieldCleaner.CleanComputer(computer);
+                            if (ObjectFilter.ShouldIncludeComputer(computer, filterOptions))
+                            {
+                                ObjectFilter.CleanupComputer(computer, filterOptions.IncludeEmptyCollections);
+                                computers.Add(computer);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.Error.WriteLine($"[!] Error processing record {recordId}: {ex.Message}");
                     }
 
-                    Api.JetResetTableSequential(session, table, ResetTableSequentialGrbit.None);
+                    recordId++;
+                }
+
+                Api.JetResetTableSequential(session, table, ResetTableSequentialGrbit.None);
             }
             catch (Exception ex)
             {

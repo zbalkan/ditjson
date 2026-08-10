@@ -9,16 +9,15 @@ namespace ditjson.Extractors
     /// </summary>
     internal static class ObjectClassifier
     {
-        private const int GroupObject = 0x10000000;
-        private const int NonSecurityGroupObject = 0x10000001;
         private const int AliasObject = 0x20000000;
-        private const int NonSecurityAliasObject = 0x20000001;
-        private const int UserObject = 0x30000000;
+        private const int GroupObject = 0x10000000;
         private const int MachineAccount = 0x30000001;
+        private const int NonSecurityAliasObject = 0x20000001;
+        private const int NonSecurityGroupObject = 0x10000001;
         private const int TrustAccount = 0x30000002;
+        private const int UserObject = 0x30000000;
 
-        internal static bool IsUserObject(int samAccountType) =>
-            samAccountType == UserObject || samAccountType == TrustAccount;
+        internal static bool IsComputerObject(int samAccountType) => samAccountType == MachineAccount;
 
         internal static bool IsGroupObject(int samAccountType) =>
             samAccountType == GroupObject ||
@@ -26,6 +25,7 @@ namespace ditjson.Extractors
             samAccountType == AliasObject ||
             samAccountType == NonSecurityAliasObject;
 
-        internal static bool IsComputerObject(int samAccountType) => samAccountType == MachineAccount;
+        internal static bool IsUserObject(int samAccountType) =>
+                            samAccountType == UserObject || samAccountType == TrustAccount;
     }
 }

@@ -10,10 +10,10 @@ namespace ditjson
         [Value(0, MetaName = "ntds.dit", Required = true, HelpText = "Path to the NTDS.dit database")]
         public string Ntds { get; set; } = string.Empty;
 
-        [Value(1, MetaName = "SYSTEM", Required = false, HelpText = "Optional matching SYSTEM registry hive")]
-        public string? System { get; set; }
-
         [Option('o', "output", Required = false, HelpText = "Write JSON to a file instead of stdout")]
         public string? Output { get; set; }
+
+        [Value(1, MetaName = "SYSTEM", Required = false, HelpText = "Optional matching SYSTEM registry hive")]
+        public string? System { get; set; }
     }
 }

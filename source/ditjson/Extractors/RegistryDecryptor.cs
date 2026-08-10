@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Security.Cryptography;
 
 namespace ditjson.Extractors
 {
@@ -8,8 +7,41 @@ namespace ditjson.Extractors
     {
         // Registry offsets for SAM hive parsing
         private const int BASEBLOCK_SIZE = 0x20;
+
         private const int HBIN_OFFSET = 0x1000;
         private const int ROOT_KEY_OFFSET = 0x2C;
+
+        internal static byte[]? DecryptHash(byte[] encryptedHash, byte[] hashEncryptionKey)
+        {
+            if (encryptedHash == null || hashEncryptionKey == null || hashEncryptionKey.Length == 0)
+                return null;
+
+            try
+            {
+                var rc4 = new RC4(hashEncryptionKey);
+                return rc4.Decrypt(encryptedHash);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        internal static byte[]? DeriveHashEncryptionKey(byte[] bootkey, byte[] hashEncryptionKeyCiphertext)
+        {
+            if (bootkey == null || hashEncryptionKeyCiphertext == null)
+                return null;
+
+            try
+            {
+                var rc4 = new RC4(bootkey);
+                return rc4.Decrypt(hashEncryptionKeyCiphertext);
+            }
+            catch
+            {
+                return null;
+            }
+        }
 
         internal static byte[]? ExtractBootkey(string systemHivePath)
         {
@@ -19,15 +51,15 @@ namespace ditjson.Extractors
             try
             {
                 using var fs = new FileStream(systemHivePath, FileMode.Open, FileAccess.Read);
-                    // Validate registry file signature
+                // Validate registry file signature
                 var signature = new byte[4];
-                    fs.Read(signature, 0, 4);
-                    if (System.Text.Encoding.ASCII.GetString(signature) != "regf")
-                        return null;
+                fs.Read(signature, 0, 4);
+                if (System.Text.Encoding.ASCII.GetString(signature) != "regf")
+                    return null;
 
-                    // Read bootkey from registry structure
-                    // The bootkey is derived from the Class key class data
-                    return ExtractBootkeyFromRegistry(fs);
+                // Read bootkey from registry structure
+                // The bootkey is derived from the Class key class data
+                return ExtractBootkeyFromRegistry(fs);
             }
             catch (Exception ex)
             {
@@ -114,38 +146,6 @@ namespace ditjson.Extractors
             Array.Copy(buffer, offset, bootkey, 0, 16);
             return IsValidBootkey(bootkey);
         }
-
-        internal static byte[]? DeriveHashEncryptionKey(byte[] bootkey, byte[] hashEncryptionKeyCiphertext)
-        {
-            if (bootkey == null || hashEncryptionKeyCiphertext == null)
-                return null;
-
-            try
-            {
-                var rc4 = new RC4(bootkey);
-                return rc4.Decrypt(hashEncryptionKeyCiphertext);
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        internal static byte[]? DecryptHash(byte[] encryptedHash, byte[] hashEncryptionKey)
-        {
-            if (encryptedHash == null || hashEncryptionKey == null || hashEncryptionKey.Length == 0)
-                return null;
-
-            try
-            {
-                var rc4 = new RC4(hashEncryptionKey);
-                return rc4.Decrypt(encryptedHash);
-            }
-            catch
-            {
-                return null;
-            }
-        }
     }
 
     // Simple RC4 implementation for registry decryption
@@ -158,6 +158,20 @@ namespace ditjson.Extractors
         internal RC4(byte[] key)
         {
             Initialize(key);
+        }
+
+        internal byte[] Decrypt(byte[] ciphertext)
+        {
+            var plaintext = new byte[ciphertext.Length];
+            for (var i = 0; i < ciphertext.Length; i++)
+            {
+                x = (x + 1) % 256;
+                y = (y + S[x]) % 256;
+                (S[y], S[x]) = (S[x], S[y]);
+                var k = S[(S[x] + S[y]) % 256];
+                plaintext[i] = (byte)(ciphertext[i] ^ k);
+            }
+            return plaintext;
         }
 
         private void Initialize(byte[] key)
@@ -176,20 +190,6 @@ namespace ditjson.Extractors
                 j = (j + S[i] + key[i % key.Length]) % 256;
                 (S[j], S[i]) = (S[i], S[j]);
             }
-        }
-
-        internal byte[] Decrypt(byte[] ciphertext)
-        {
-            var plaintext = new byte[ciphertext.Length];
-            for (var i = 0; i < ciphertext.Length; i++)
-            {
-                x = (x + 1) % 256;
-                y = (y + S[x]) % 256;
-                (S[y], S[x]) = (S[x], S[y]);
-                var k = S[(S[x] + S[y]) % 256];
-                plaintext[i] = (byte)(ciphertext[i] ^ k);
-            }
-            return plaintext;
         }
     }
 }

@@ -5,10 +5,10 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using CommandLine;
-using Microsoft.Isam.Esent.Interop;
 using ditjson.Extractors;
 using ditjson.Filtering;
 using ditjson.Output;
+using Microsoft.Isam.Esent.Interop;
 
 [assembly: InternalsVisibleTo("ditjson.Tests")]
 
@@ -69,6 +69,18 @@ namespace ditjson
             }
         }
 
+        internal static void WriteOutput(string json, string? output)
+        {
+            if (string.IsNullOrEmpty(output))
+            {
+                Console.Out.Write(json);
+                return;
+            }
+
+            File.WriteAllText(output, json);
+            Console.Error.WriteLine($"[+] JSON export complete: {output}");
+        }
+
         [RequiresUnreferencedCode("Calls ditjson.Output.JsonOutputFormatter.FormatStructuredOutput")]
         private static string Extract(Options opts)
         {
@@ -111,18 +123,6 @@ namespace ditjson
             }
 
             return JsonOutputFormatter.FormatStructuredOutput(users, groups, computers);
-        }
-
-        internal static void WriteOutput(string json, string? output)
-        {
-            if (string.IsNullOrEmpty(output))
-            {
-                Console.Out.Write(json);
-                return;
-            }
-
-            File.WriteAllText(output, json);
-            Console.Error.WriteLine($"[+] JSON export complete: {output}");
         }
 
         private static List<string> FilterTables(Session session, JET_DBID dbid)

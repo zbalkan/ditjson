@@ -13,85 +13,6 @@ namespace ditjson.Querying
     /// </summary>
     internal static class CrownJewelsFilterMinimized
     {
-        // Consolidated field projections
-        private static class F
-        {
-            private static string[] C(params string[][] sets) => sets.SelectMany(x => x).ToArray();
-            private static readonly string[] Base = { "name", "samAccountName", "objectSid" };
-            private static readonly string[] Hashes = { "passwordHashes", "lastLogon", "passwordLastSet" };
-            private static readonly string[] Creds = { "supplementalCredentials" };
-            private static readonly string[] Ctrl = { "userAccountControl" };
-            private static readonly string[] Comp = { "dnsHostName", "operatingSystem" };
-
-            public static readonly string[] AdminsHashes = C(Base, Hashes);
-            public static readonly string[] WithCreds = C(Base, Creds);
-            public static readonly string[] Services = C(Base, Ctrl, new[] { "passwordLastSet" });
-            public static readonly string[] WithHashes = C(Base, Ctrl, new[] { "passwordHashes", "lastLogon" });
-            public static readonly string[] Computers = C(Base, Comp, new[] { "passwordLastSet", "passwordHashes" });
-        }
-
-        // Reusable property checks
-        private static bool HasMembership(JsonElement u, string g) =>
-            u.TryGetProperty("memberOf", out var m) &&
-            m.EnumerateArray().Any(x => x.TryGetProperty("name", out var n) && n.GetString() == g);
-
-        private static bool HasPasswordHash(JsonElement u) =>
-            u.TryGetProperty("passwordHashes", out var h) &&
-            h.TryGetProperty("ntHash", out var nt) &&
-            nt.ValueKind == JsonValueKind.String &&
-            !string.IsNullOrEmpty(nt.GetString());
-
-        private static bool HasFlag(JsonElement u, string f) =>
-            u.TryGetProperty("userAccountControl", out var a) &&
-            a.EnumerateArray().Any(x => x.GetString() == f);
-
-        private static bool HasCleartext(JsonElement u) =>
-            u.TryGetProperty("supplementalCredentials", out var s) &&
-            s.TryGetProperty("clearTextPassword", out var p) &&
-            p.ValueKind == JsonValueKind.String &&
-            !string.IsNullOrEmpty(p.GetString());
-
-        private static bool HasKerberos(JsonElement u) =>
-            u.TryGetProperty("supplementalCredentials", out var s) &&
-            s.TryGetProperty("kerberosKeys", out var k) &&
-            k.ValueKind == JsonValueKind.Array &&
-            k.GetArrayLength() > 0;
-
-        private static bool IsService(JsonElement u)
-        {
-            if (!HasFlag(u, "DONT_EXPIRE_PASSWORD") || !u.TryGetProperty("samAccountName", out var s))
-                return false;
-            var n = s.GetString() ?? "";
-            return n.Contains("svc", StringComparison.OrdinalIgnoreCase) ||
-                   n.Contains("service", StringComparison.OrdinalIgnoreCase) ||
-                   n.Contains("mssql", StringComparison.OrdinalIgnoreCase);
-        }
-
-        private static bool IsRecent(JsonElement u)
-        {
-            if (!u.TryGetProperty("lastLogon", out var l) || l.ValueKind != JsonValueKind.String)
-                return false;
-            var limit = DateTime.UtcNow.AddDays(-30).ToString("O");
-            return (l.GetString()?.CompareTo(limit) ?? -1) > 0 && HasPasswordHash(u);
-        }
-
-        private static bool IsStaleComputer(JsonElement c)
-        {
-            if (!c.TryGetProperty("passwordLastSet", out var p) || p.ValueKind != JsonValueKind.String)
-                return false;
-            var limit = DateTime.UtcNow.AddDays(-90).ToString("O");
-            return (p.GetString()?.CompareTo(limit) ?? 1) < 0;
-        }
-
-        // Query with minimal verbosity
-        private sealed class Q
-        {
-            public string N { get; init; }
-            public Func<JsonElement, bool> P { get; init; }
-            public string[] F { get; init; }
-            public int C { get; set; }
-        }
-
         [RequiresUnreferencedCode("Calls ditjson.Querying.CrownJewelsFilterMinimized.Out(JsonElement, String, Int32)")]
         public static string ApplyCrownJewels(string jsonData)
         {
@@ -154,18 +75,57 @@ namespace ditjson.Querying
             }
         }
 
-        private static string Proj(JsonElement e, string[] fs)
+        private static bool HasCleartext(JsonElement u) =>
+                    u.TryGetProperty("supplementalCredentials", out var s) &&
+                    s.TryGetProperty("clearTextPassword", out var p) &&
+                    p.ValueKind == JsonValueKind.String &&
+                    !string.IsNullOrEmpty(p.GetString());
+
+        private static bool HasFlag(JsonElement u, string f) =>
+                    u.TryGetProperty("userAccountControl", out var a) &&
+                    a.EnumerateArray().Any(x => x.GetString() == f);
+
+        private static bool HasKerberos(JsonElement u) =>
+                    u.TryGetProperty("supplementalCredentials", out var s) &&
+                    s.TryGetProperty("kerberosKeys", out var k) &&
+                    k.ValueKind == JsonValueKind.Array &&
+                    k.GetArrayLength() > 0;
+
+        // Reusable property checks
+        private static bool HasMembership(JsonElement u, string g) =>
+            u.TryGetProperty("memberOf", out var m) &&
+            m.EnumerateArray().Any(x => x.TryGetProperty("name", out var n) && n.GetString() == g);
+
+        private static bool HasPasswordHash(JsonElement u) =>
+                    u.TryGetProperty("passwordHashes", out var h) &&
+                    h.TryGetProperty("ntHash", out var nt) &&
+                    nt.ValueKind == JsonValueKind.String &&
+                    !string.IsNullOrEmpty(nt.GetString());
+
+        private static bool IsRecent(JsonElement u)
         {
-            var s = new StringBuilder("{");
-            var f = true;
-            foreach (var x in fs)
-                if (e.TryGetProperty(x, out var v))
-                {
-                    if (!f) s.Append(',');
-                    s.Append('"').Append(x).Append("\":").Append(v.GetRawText());
-                    f = false;
-                }
-            return s.Append('}').ToString();
+            if (!u.TryGetProperty("lastLogon", out var l) || l.ValueKind != JsonValueKind.String)
+                return false;
+            var limit = DateTime.UtcNow.AddDays(-30).ToString("O");
+            return (l.GetString()?.CompareTo(limit) ?? -1) > 0 && HasPasswordHash(u);
+        }
+
+        private static bool IsService(JsonElement u)
+        {
+            if (!HasFlag(u, "DONT_EXPIRE_PASSWORD") || !u.TryGetProperty("samAccountName", out var s))
+                return false;
+            var n = s.GetString() ?? "";
+            return n.Contains("svc", StringComparison.OrdinalIgnoreCase) ||
+                   n.Contains("service", StringComparison.OrdinalIgnoreCase) ||
+                   n.Contains("mssql", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsStaleComputer(JsonElement c)
+        {
+            if (!c.TryGetProperty("passwordLastSet", out var p) || p.ValueKind != JsonValueKind.String)
+                return false;
+            var limit = DateTime.UtcNow.AddDays(-90).ToString("O");
+            return (p.GetString()?.CompareTo(limit) ?? 1) < 0;
         }
 
         [RequiresUnreferencedCode("Calls System.Text.Json.JsonSerializer.Deserialize<TValue>(String, JsonSerializerOptions)")]
@@ -183,6 +143,55 @@ namespace ditjson.Querying
                 resultCount = c
             };
             return JsonSerializer.Serialize(x, o);
+        }
+
+        private static string Proj(JsonElement e, string[] fs)
+        {
+            var s = new StringBuilder("{");
+            var f = true;
+            foreach (var x in fs)
+                if (e.TryGetProperty(x, out var v))
+                {
+                    if (!f) s.Append(',');
+                    s.Append('"').Append(x).Append("\":").Append(v.GetRawText());
+                    f = false;
+                }
+            return s.Append('}').ToString();
+        }
+
+        // Consolidated field projections
+        private static class F
+        {
+            public static readonly string[] AdminsHashes = C(Base, Hashes);
+
+            public static readonly string[] Computers = C(Base, Comp, new[] { "passwordLastSet", "passwordHashes" });
+
+            public static readonly string[] Services = C(Base, Ctrl, new[] { "passwordLastSet" });
+
+            public static readonly string[] WithCreds = C(Base, Creds);
+
+            public static readonly string[] WithHashes = C(Base, Ctrl, new[] { "passwordHashes", "lastLogon" });
+
+            private static readonly string[] Base = { "name", "samAccountName", "objectSid" };
+
+            private static readonly string[] Comp = { "dnsHostName", "operatingSystem" };
+
+            private static readonly string[] Creds = { "supplementalCredentials" };
+
+            private static readonly string[] Ctrl = { "userAccountControl" };
+
+            private static readonly string[] Hashes = { "passwordHashes", "lastLogon", "passwordLastSet" };
+
+            private static string[] C(params string[][] sets) => sets.SelectMany(x => x).ToArray();
+        }
+
+        // Query with minimal verbosity
+        private sealed class Q
+        {
+            public int C { get; set; }
+            public string[] F { get; init; }
+            public string N { get; init; }
+            public Func<JsonElement, bool> P { get; init; }
         }
     }
 }

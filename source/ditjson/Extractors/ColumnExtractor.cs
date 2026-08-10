@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Text;
 using Microsoft.Isam.Esent.Interop;
@@ -7,7 +6,7 @@ namespace ditjson.Extractors
 {
     internal static class ColumnExtractor
     {
-        internal static string? GetString(Session session, JET_TABLEID table,
+        internal static byte[]? GetBinary(Session session, JET_TABLEID table,
             IDictionary<string, JET_COLUMNID> columnDict, string fieldName)
         {
             try
@@ -15,9 +14,7 @@ namespace ditjson.Extractors
                 if (!columnDict.ContainsKey(fieldName))
                     return null;
 
-                var value = Api.RetrieveColumnAsString(session, table, columnDict[fieldName],
-                    Encoding.Unicode);
-                return string.IsNullOrEmpty(value) ? null : value;
+                return Api.RetrieveColumn(session, table, columnDict[fieldName]);
             }
             catch
             {
@@ -59,15 +56,23 @@ namespace ditjson.Extractors
             }
         }
 
-        internal static byte[]? GetBinary(Session session, JET_TABLEID table,
-            IDictionary<string, JET_COLUMNID> columnDict, string fieldName)
+        internal static int GetRecordId(Session session, JET_TABLEID table,
+            IDictionary<string, JET_COLUMNID> columnDict, int fallback) =>
+            columnDict.ContainsKey("DNT_col")
+                ? GetInt32(session, table, columnDict, "DNT_col")
+                : fallback;
+
+        internal static string? GetString(Session session, JET_TABLEID table,
+                                            IDictionary<string, JET_COLUMNID> columnDict, string fieldName)
         {
             try
             {
                 if (!columnDict.ContainsKey(fieldName))
                     return null;
 
-                return Api.RetrieveColumn(session, table, columnDict[fieldName]);
+                var value = Api.RetrieveColumnAsString(session, table, columnDict[fieldName],
+                    Encoding.Unicode);
+                return string.IsNullOrEmpty(value) ? null : value;
             }
             catch
             {
@@ -76,11 +81,5 @@ namespace ditjson.Extractors
         }
 
         internal static bool HasColumn(Dictionary<string, JET_COLUMNID> columnDict, string fieldName) => columnDict.ContainsKey(fieldName);
-
-        internal static int GetRecordId(Session session, JET_TABLEID table,
-            IDictionary<string, JET_COLUMNID> columnDict, int fallback) =>
-            columnDict.ContainsKey("DNT_col")
-                ? GetInt32(session, table, columnDict, "DNT_col")
-                : fallback;
     }
 }

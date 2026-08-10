@@ -13,22 +13,6 @@ namespace ditjson.Querying
     /// </summary>
     internal static class CrownJewelsFilter
     {
-        private static class FieldProjections
-        {
-            private static string[] Compose(params string[][] sets) => sets.SelectMany(x => x).ToArray();
-            private static readonly string[] Base = { "name", "samAccountName", "objectSid" };
-            private static readonly string[] Hashes = { "passwordHashes", "lastLogon", "passwordLastSet" };
-            private static readonly string[] Credentials = { "supplementalCredentials" };
-            private static readonly string[] Uac = { "userAccountControl" };
-            private static readonly string[] ComputerExtended = { "dnsHostName", "operatingSystem" };
-
-            public static readonly string[] AdminsWithHashes = Compose(Base, Hashes);
-            public static readonly string[] WithCredentials = Compose(Base, Credentials);
-            public static readonly string[] ServiceAccounts = Compose(Base, Uac, new[] { "passwordLastSet" });
-            public static readonly string[] WithHashes = Compose(Base, Uac, new[] { "passwordHashes", "lastLogon" });
-            public static readonly string[] Computers = Compose(Base, ComputerExtended, new[] { "passwordLastSet", "passwordHashes" });
-        }
-
         [RequiresUnreferencedCode("Calls ditjson.Querying.CrownJewelsFilter.BuildOutputJson(JsonElement, List<JsonElement>)")]
         public static string ApplyCrownJewels(string jsonData)
         {
@@ -62,17 +46,96 @@ namespace ditjson.Querying
             }
         }
 
+        [RequiresUnreferencedCode("Calls System.Text.Json.JsonSerializer.Deserialize<TValue>(String, JsonSerializerOptions)")]
+        private static string BuildOutputJson(JsonElement metadata, List<JsonElement> results)
+        {
+            var options = new JsonSerializerOptions
+            {
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                WriteIndented = true
+            };
+
+            var output = new
+            {
+                metadata = JsonSerializer.Deserialize<Dictionary<string, object>>(metadata.GetRawText()),
+                results = results.Select(r => JsonSerializer.Deserialize<object>(r.GetRawText())).ToList(),
+                resultCount = results.Count
+            };
+
+            return JsonSerializer.Serialize(output, options);
+        }
+
+        private static bool HasFlag(JsonElement user, string flag)
+        {
+            if (!user.TryGetProperty("userAccountControl", out var uac))
+                return false;
+
+            foreach (var item in uac.EnumerateArray())
+            {
+                if (item.ValueKind == JsonValueKind.String && item.GetString() == flag)
+                    return true;
+            }
+            return false;
+        }
+
+        private static bool HasMembership(JsonElement user, string groupName)
+        {
+            if (!user.TryGetProperty("memberOf", out var memberOf))
+                return false;
+
+            foreach (var member in memberOf.EnumerateArray())
+            {
+                if (member.TryGetProperty("name", out var name) &&
+                    name.GetString() == groupName)
+                    return true;
+            }
+            return false;
+        }
+
+        private static bool HasPasswordHash(JsonElement user)
+        {
+            if (!user.TryGetProperty("passwordHashes", out var hashes))
+                return false;
+
+            if (hashes.TryGetProperty("ntHash", out var nt) &&
+                nt.ValueKind == JsonValueKind.String &&
+                !string.IsNullOrEmpty(nt.GetString()))
+                return true;
+
+            return false;
+        }
+
+        [RequiresUnreferencedCode("Calls System.Text.Json.JsonSerializer.Deserialize<TValue>(String, JsonSerializerOptions)")]
+        private static JsonElement ProjectElement(JsonElement element, string[] fields)
+        {
+            var dict = new Dictionary<string, object?>();
+
+            foreach (var field in fields)
+            {
+                if (element.TryGetProperty(field, out var value))
+                {
+                    dict[field] = JsonSerializer.Deserialize<object>(value.GetRawText());
+                }
+            }
+
+            var json = JsonSerializer.Serialize(dict, new JsonSerializerOptions { WriteIndented = false });
+            return JsonDocument.Parse(json).RootElement.Clone();
+        }
+
         [RequiresUnreferencedCode("Calls ditjson.Querying.CrownJewelsFilter.ProjectElement(JsonElement, String[])")]
-        private static List<JsonElement> QueryByGroup(JsonElement users, string groupName, Func<JsonElement, bool> additionalFilter, string[] fields, string logMessage)
+        private static List<JsonElement> QueryByCleartext(JsonElement users, string logMessage)
         {
             Console.Error.WriteLine(logMessage);
             var results = new List<JsonElement>();
 
             foreach (var user in users.EnumerateArray())
             {
-                if (HasMembership(user, groupName) && additionalFilter(user))
+                if (user.TryGetProperty("supplementalCredentials", out var supp) &&
+                    supp.TryGetProperty("clearTextPassword", out var pwd) &&
+                    pwd.ValueKind == JsonValueKind.String &&
+                    !string.IsNullOrEmpty(pwd.GetString()))
                 {
-                    results.Add(ProjectElement(user, fields));
+                    results.Add(ProjectElement(user, FieldProjections.WithCredentials));
                 }
             }
 
@@ -103,19 +166,16 @@ namespace ditjson.Querying
         }
 
         [RequiresUnreferencedCode("Calls ditjson.Querying.CrownJewelsFilter.ProjectElement(JsonElement, String[])")]
-        private static List<JsonElement> QueryByCleartext(JsonElement users, string logMessage)
+        private static List<JsonElement> QueryByGroup(JsonElement users, string groupName, Func<JsonElement, bool> additionalFilter, string[] fields, string logMessage)
         {
             Console.Error.WriteLine(logMessage);
             var results = new List<JsonElement>();
 
             foreach (var user in users.EnumerateArray())
             {
-                if (user.TryGetProperty("supplementalCredentials", out var supp) &&
-                    supp.TryGetProperty("clearTextPassword", out var pwd) &&
-                    pwd.ValueKind == JsonValueKind.String &&
-                    !string.IsNullOrEmpty(pwd.GetString()))
+                if (HasMembership(user, groupName) && additionalFilter(user))
                 {
-                    results.Add(ProjectElement(user, FieldProjections.WithCredentials));
+                    results.Add(ProjectElement(user, fields));
                 }
             }
 
@@ -139,6 +199,30 @@ namespace ditjson.Querying
                     keys.GetArrayLength() > 0)
                 {
                     results.Add(ProjectElement(user, FieldProjections.WithCredentials));
+                }
+            }
+
+            if (results.Count > 0)
+                Console.Error.WriteLine($"[+] Found {results.Count} results");
+
+            return results;
+        }
+
+        [RequiresUnreferencedCode("Calls ditjson.Querying.CrownJewelsFilter.ProjectElement(JsonElement, String[])")]
+        private static List<JsonElement> QueryRecentlyActive(JsonElement users, string logMessage)
+        {
+            Console.Error.WriteLine(logMessage);
+            var thirtyDaysAgo = DateTime.UtcNow.AddDays(-30).ToString("O");
+            var results = new List<JsonElement>();
+
+            foreach (var user in users.EnumerateArray())
+            {
+                if (user.TryGetProperty("lastLogon", out var lastLogon) &&
+                    lastLogon.ValueKind == JsonValueKind.String &&
+                    lastLogon.GetString()?.CompareTo(thirtyDaysAgo) > 0 &&
+                    HasPasswordHash(user))
+                {
+                    results.Add(ProjectElement(user, FieldProjections.WithHashes));
                 }
             }
 
@@ -176,30 +260,6 @@ namespace ditjson.Querying
         }
 
         [RequiresUnreferencedCode("Calls ditjson.Querying.CrownJewelsFilter.ProjectElement(JsonElement, String[])")]
-        private static List<JsonElement> QueryRecentlyActive(JsonElement users, string logMessage)
-        {
-            Console.Error.WriteLine(logMessage);
-            var thirtyDaysAgo = DateTime.UtcNow.AddDays(-30).ToString("O");
-            var results = new List<JsonElement>();
-
-            foreach (var user in users.EnumerateArray())
-            {
-                if (user.TryGetProperty("lastLogon", out var lastLogon) &&
-                    lastLogon.ValueKind == JsonValueKind.String &&
-                    lastLogon.GetString()?.CompareTo(thirtyDaysAgo) > 0 &&
-                    HasPasswordHash(user))
-                {
-                    results.Add(ProjectElement(user, FieldProjections.WithHashes));
-                }
-            }
-
-            if (results.Count > 0)
-                Console.Error.WriteLine($"[+] Found {results.Count} results");
-
-            return results;
-        }
-
-        [RequiresUnreferencedCode("Calls ditjson.Querying.CrownJewelsFilter.ProjectElement(JsonElement, String[])")]
         private static List<JsonElement> QueryStaleComputers(JsonElement computers, string logMessage)
         {
             Console.Error.WriteLine(logMessage);
@@ -222,80 +282,29 @@ namespace ditjson.Querying
             return results;
         }
 
-        private static bool HasMembership(JsonElement user, string groupName)
+        private static class FieldProjections
         {
-            if (!user.TryGetProperty("memberOf", out var memberOf))
-                return false;
+            public static readonly string[] AdminsWithHashes = Compose(Base, Hashes);
 
-            foreach (var member in memberOf.EnumerateArray())
-            {
-                if (member.TryGetProperty("name", out var name) &&
-                    name.GetString() == groupName)
-                    return true;
-            }
-            return false;
-        }
+            public static readonly string[] Computers = Compose(Base, ComputerExtended, new[] { "passwordLastSet", "passwordHashes" });
 
-        private static bool HasPasswordHash(JsonElement user)
-        {
-            if (!user.TryGetProperty("passwordHashes", out var hashes))
-                return false;
+            public static readonly string[] ServiceAccounts = Compose(Base, Uac, new[] { "passwordLastSet" });
 
-            if (hashes.TryGetProperty("ntHash", out var nt) &&
-                nt.ValueKind == JsonValueKind.String &&
-                !string.IsNullOrEmpty(nt.GetString()))
-                return true;
+            public static readonly string[] WithCredentials = Compose(Base, Credentials);
 
-            return false;
-        }
+            public static readonly string[] WithHashes = Compose(Base, Uac, new[] { "passwordHashes", "lastLogon" });
 
-        private static bool HasFlag(JsonElement user, string flag)
-        {
-            if (!user.TryGetProperty("userAccountControl", out var uac))
-                return false;
+            private static readonly string[] Base = { "name", "samAccountName", "objectSid" };
 
-            foreach (var item in uac.EnumerateArray())
-            {
-                if (item.ValueKind == JsonValueKind.String && item.GetString() == flag)
-                    return true;
-            }
-            return false;
-        }
+            private static readonly string[] ComputerExtended = { "dnsHostName", "operatingSystem" };
 
-        [RequiresUnreferencedCode("Calls System.Text.Json.JsonSerializer.Deserialize<TValue>(String, JsonSerializerOptions)")]
-        private static JsonElement ProjectElement(JsonElement element, string[] fields)
-        {
-            var dict = new Dictionary<string, object?>();
+            private static readonly string[] Credentials = { "supplementalCredentials" };
 
-            foreach (var field in fields)
-            {
-                if (element.TryGetProperty(field, out var value))
-                {
-                    dict[field] = JsonSerializer.Deserialize<object>(value.GetRawText());
-                }
-            }
+            private static readonly string[] Hashes = { "passwordHashes", "lastLogon", "passwordLastSet" };
 
-            var json = JsonSerializer.Serialize(dict, new JsonSerializerOptions { WriteIndented = false });
-            return JsonDocument.Parse(json).RootElement.Clone();
-        }
+            private static readonly string[] Uac = { "userAccountControl" };
 
-        [RequiresUnreferencedCode("Calls System.Text.Json.JsonSerializer.Deserialize<TValue>(String, JsonSerializerOptions)")]
-        private static string BuildOutputJson(JsonElement metadata, List<JsonElement> results)
-        {
-            var options = new JsonSerializerOptions
-            {
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-                WriteIndented = true
-            };
-
-            var output = new
-            {
-                metadata = JsonSerializer.Deserialize<Dictionary<string, object>>(metadata.GetRawText()),
-                results = results.Select(r => JsonSerializer.Deserialize<object>(r.GetRawText())).ToList(),
-                resultCount = results.Count
-            };
-
-            return JsonSerializer.Serialize(output, options);
+            private static string[] Compose(params string[][] sets) => sets.SelectMany(x => x).ToArray();
         }
     }
 }

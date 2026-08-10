@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.Isam.Esent.Interop;
 using ditjson.Models;
+using Microsoft.Isam.Esent.Interop;
 
 namespace ditjson.Extractors
 {
@@ -23,39 +23,6 @@ namespace ditjson.Extractors
             DecryptComputerHashes(session, dbid, computers, bootkey);
         }
 
-        private static void DecryptUserHashes(Session session, JET_DBID dbid, List<User> users, byte[] bootkey)
-        {
-            if (users == null || users.Count == 0)
-                return;
-
-            try
-            {
-                using var table = new Table(session, dbid, "datatable", OpenTableGrbit.ReadOnly);
-                    var columnDict = Api.GetColumnDictionary(session, table);
-                    var userDict = users.ToDictionary(u => u.RecordId);
-
-                    Api.JetSetTableSequential(session, table, SetTableSequentialGrbit.None);
-                    Api.MoveBeforeFirst(session, table);
-
-                var recordId = 1;
-                    while (Api.TryMoveNext(session, table))
-                    {
-                        var currentRecordId = ColumnExtractor.GetRecordId(session, table, columnDict, recordId);
-                        if (userDict.TryGetValue(currentRecordId, out var user))
-                        {
-                            DecryptHashesForUser(session, table, columnDict, user, bootkey);
-                        }
-                        recordId++;
-                    }
-
-                    Api.JetResetTableSequential(session, table, ResetTableSequentialGrbit.None);
-            }
-            catch (Exception ex)
-            {
-                Console.Error.WriteLine($"[!] Error decrypting user hashes: {ex.Message}");
-            }
-        }
-
         private static void DecryptComputerHashes(Session session, JET_DBID dbid, List<Computer> computers, byte[] bootkey)
         {
             if (computers == null || computers.Count == 0)
@@ -64,24 +31,24 @@ namespace ditjson.Extractors
             try
             {
                 using var table = new Table(session, dbid, "datatable", OpenTableGrbit.ReadOnly);
-                    var columnDict = Api.GetColumnDictionary(session, table);
-                    var computerDict = computers.ToDictionary(c => c.RecordId);
+                var columnDict = Api.GetColumnDictionary(session, table);
+                var computerDict = computers.ToDictionary(c => c.RecordId);
 
-                    Api.JetSetTableSequential(session, table, SetTableSequentialGrbit.None);
-                    Api.MoveBeforeFirst(session, table);
+                Api.JetSetTableSequential(session, table, SetTableSequentialGrbit.None);
+                Api.MoveBeforeFirst(session, table);
 
                 var recordId = 1;
-                    while (Api.TryMoveNext(session, table))
+                while (Api.TryMoveNext(session, table))
+                {
+                    var currentRecordId = ColumnExtractor.GetRecordId(session, table, columnDict, recordId);
+                    if (computerDict.TryGetValue(currentRecordId, out var computer))
                     {
-                        var currentRecordId = ColumnExtractor.GetRecordId(session, table, columnDict, recordId);
-                        if (computerDict.TryGetValue(currentRecordId, out var computer))
-                        {
-                            DecryptHashesForComputer(session, table, columnDict, computer, bootkey);
-                        }
-                        recordId++;
+                        DecryptHashesForComputer(session, table, columnDict, computer, bootkey);
                     }
+                    recordId++;
+                }
 
-                    Api.JetResetTableSequential(session, table, ResetTableSequentialGrbit.None);
+                Api.JetResetTableSequential(session, table, ResetTableSequentialGrbit.None);
             }
             catch (Exception ex)
             {
@@ -89,40 +56,22 @@ namespace ditjson.Extractors
             }
         }
 
-        private static void DecryptHashesForUser(Session session, JET_TABLEID table,
-            IDictionary<string, JET_COLUMNID> columnDict, User user, byte[] bootkey)
+        private static byte[]? DecryptHash(byte[] encryptedHash, byte[] bootkey)
         {
+            if (encryptedHash == null || encryptedHash.Length < 24 || bootkey == null || bootkey.Length == 0)
+                return null;
+
             try
             {
-                // Decrypt NT hash
-                var ntHashEncrypted = ColumnExtractor.GetBinary(
-                    session, table, columnDict, NtdsColumnNames.NtHash);
-                if (ntHashEncrypted != null && ntHashEncrypted.Length >= 24)
-                {
-                    var ntHashDecrypted = DecryptHash(ntHashEncrypted, bootkey);
-                    if (ntHashDecrypted != null && ntHashDecrypted.Length >= 16)
-                    {
-                        user.PasswordHashes ??= new PasswordHashes();
-                        user.PasswordHashes.NtHash = BitConverter.ToString(ntHashDecrypted, 0, 16).Replace("-", "").ToUpperInvariant();
-                    }
-                }
+                // Skip the first 8 bytes (salt), decrypt the remaining bytes
+                var ciphertext = new byte[encryptedHash.Length - 8];
+                Array.Copy(encryptedHash, 8, ciphertext, 0, ciphertext.Length);
 
-                // Decrypt LM hash
-                var lmHashEncrypted = ColumnExtractor.GetBinary(
-                    session, table, columnDict, NtdsColumnNames.LmHash);
-                if (lmHashEncrypted != null && lmHashEncrypted.Length >= 24)
-                {
-                    var lmHashDecrypted = DecryptHash(lmHashEncrypted, bootkey);
-                    if (lmHashDecrypted != null && lmHashDecrypted.Length >= 16)
-                    {
-                        user.PasswordHashes ??= new PasswordHashes();
-                        user.PasswordHashes.LmHash = BitConverter.ToString(lmHashDecrypted, 0, 16).Replace("-", "").ToUpperInvariant();
-                    }
-                }
+                return RegistryDecryptor.DecryptHash(ciphertext, bootkey);
             }
-            catch (Exception ex)
+            catch
             {
-                Console.Error.WriteLine($"[!] Error decrypting hashes for user {user.SamAccountName}: {ex.Message}");
+                return null;
             }
         }
 
@@ -163,22 +112,73 @@ namespace ditjson.Extractors
             }
         }
 
-        private static byte[]? DecryptHash(byte[] encryptedHash, byte[] bootkey)
+        private static void DecryptHashesForUser(Session session, JET_TABLEID table,
+            IDictionary<string, JET_COLUMNID> columnDict, User user, byte[] bootkey)
         {
-            if (encryptedHash == null || encryptedHash.Length < 24 || bootkey == null || bootkey.Length == 0)
-                return null;
+            try
+            {
+                // Decrypt NT hash
+                var ntHashEncrypted = ColumnExtractor.GetBinary(
+                    session, table, columnDict, NtdsColumnNames.NtHash);
+                if (ntHashEncrypted != null && ntHashEncrypted.Length >= 24)
+                {
+                    var ntHashDecrypted = DecryptHash(ntHashEncrypted, bootkey);
+                    if (ntHashDecrypted != null && ntHashDecrypted.Length >= 16)
+                    {
+                        user.PasswordHashes ??= new PasswordHashes();
+                        user.PasswordHashes.NtHash = BitConverter.ToString(ntHashDecrypted, 0, 16).Replace("-", "").ToUpperInvariant();
+                    }
+                }
+
+                // Decrypt LM hash
+                var lmHashEncrypted = ColumnExtractor.GetBinary(
+                    session, table, columnDict, NtdsColumnNames.LmHash);
+                if (lmHashEncrypted != null && lmHashEncrypted.Length >= 24)
+                {
+                    var lmHashDecrypted = DecryptHash(lmHashEncrypted, bootkey);
+                    if (lmHashDecrypted != null && lmHashDecrypted.Length >= 16)
+                    {
+                        user.PasswordHashes ??= new PasswordHashes();
+                        user.PasswordHashes.LmHash = BitConverter.ToString(lmHashDecrypted, 0, 16).Replace("-", "").ToUpperInvariant();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"[!] Error decrypting hashes for user {user.SamAccountName}: {ex.Message}");
+            }
+        }
+
+        private static void DecryptUserHashes(Session session, JET_DBID dbid, List<User> users, byte[] bootkey)
+        {
+            if (users == null || users.Count == 0)
+                return;
 
             try
             {
-                // Skip the first 8 bytes (salt), decrypt the remaining bytes
-                var ciphertext = new byte[encryptedHash.Length - 8];
-                Array.Copy(encryptedHash, 8, ciphertext, 0, ciphertext.Length);
+                using var table = new Table(session, dbid, "datatable", OpenTableGrbit.ReadOnly);
+                var columnDict = Api.GetColumnDictionary(session, table);
+                var userDict = users.ToDictionary(u => u.RecordId);
 
-                return RegistryDecryptor.DecryptHash(ciphertext, bootkey);
+                Api.JetSetTableSequential(session, table, SetTableSequentialGrbit.None);
+                Api.MoveBeforeFirst(session, table);
+
+                var recordId = 1;
+                while (Api.TryMoveNext(session, table))
+                {
+                    var currentRecordId = ColumnExtractor.GetRecordId(session, table, columnDict, recordId);
+                    if (userDict.TryGetValue(currentRecordId, out var user))
+                    {
+                        DecryptHashesForUser(session, table, columnDict, user, bootkey);
+                    }
+                    recordId++;
+                }
+
+                Api.JetResetTableSequential(session, table, ResetTableSequentialGrbit.None);
             }
-            catch
+            catch (Exception ex)
             {
-                return null;
+                Console.Error.WriteLine($"[!] Error decrypting user hashes: {ex.Message}");
             }
         }
     }

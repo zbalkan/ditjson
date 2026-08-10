@@ -19,8 +19,6 @@ namespace ditjson.Decoders
             return ConvertFileTimeToUtc(filetime);
         }
 
-        internal static string? DecodeFromInt64(long filetime) => ConvertFileTimeToUtc(filetime);
-
         // Values using the LDAP UTC-time syntax are stored in ntds.dit as DSTIME:
         // whole seconds elapsed since 1601-01-01, rather than as strings or FILETIME.
         internal static string? DecodeDsTime(long seconds)
@@ -37,6 +35,8 @@ namespace ditjson.Decoders
                 return null;
             }
         }
+
+        internal static string? DecodeFromInt64(long filetime) => ConvertFileTimeToUtc(filetime);
 
         private static string? ConvertFileTimeToUtc(long filetime)
         {

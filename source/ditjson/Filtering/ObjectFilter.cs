@@ -5,53 +5,40 @@ namespace ditjson.Filtering
 {
     internal static class ObjectFilter
     {
-        internal class FilterOptions
-        {
-            public bool IncludeDeleted { get; set; } = false;
-            public bool ExcludeDisabled { get; set; } = false;
-            public bool ExcludeLockedOut { get; set; } = false;
-            public bool ExcludeComputers { get; set; } = false;
-            public bool ExcludeGroups { get; set; } = false;
-            public bool IncludeEmptyCollections { get; set; } = false;
-        }
-
-        internal static bool ShouldIncludeUser(User? user, FilterOptions? options)
-        {
-            if (user == null || options == null)
-                return false;
-
-            if (user.IsDeleted && !options.IncludeDeleted)
-                return false;
-
-            if (options.ExcludeDisabled && user.UserAccountControl?.Contains("ACCOUNTDISABLE") == true)
-                return false;
-
-            if (options.ExcludeLockedOut && user.UserAccountControl?.Contains("LOCKOUT") == true)
-                return false;
-
-            return true;
-        }
-
-        internal static bool ShouldIncludeGroup(Group? group, FilterOptions options)
-        {
-            if (group == null)
-                return false;
-
-            if (group.IsDeleted && !options.IncludeDeleted)
-                return false;
-
-            return !options.ExcludeGroups;
-        }
-
-        internal static bool ShouldIncludeComputer(Computer? computer, FilterOptions options)
+        internal static void CleanupComputer(Computer? computer, bool includeEmptyCollections)
         {
             if (computer == null)
-                return false;
+                return;
 
-            if (computer.IsDeleted && !options.IncludeDeleted)
-                return false;
+            if (!includeEmptyCollections && computer.MemberOf != null && computer.MemberOf.Count == 0)
+                computer.MemberOf = null;
 
-            return !options.ExcludeComputers;
+            if (computer.PasswordHashes != null && string.IsNullOrEmpty(computer.PasswordHashes.NtHash)
+                && string.IsNullOrEmpty(computer.PasswordHashes.LmHash))
+            {
+                computer.PasswordHashes = null;
+            }
+
+            if (computer.SupplementalCredentials != null && string.IsNullOrEmpty(computer.SupplementalCredentials.ClearTextPassword)
+                && (computer.SupplementalCredentials.KerberosKeys == null || computer.SupplementalCredentials.KerberosKeys.Count == 0))
+            {
+                computer.SupplementalCredentials = null;
+            }
+
+            if (computer.Recovery != null && string.IsNullOrEmpty(computer.Recovery.RecoveryPassword)
+                && computer.Recovery.RecoveryGuid == Guid.Empty && computer.Recovery.VolumeGuid == Guid.Empty)
+            {
+                computer.Recovery = null;
+            }
+        }
+
+        internal static void CleanupGroup(Group? group, bool includeEmptyCollections)
+        {
+            if (group == null)
+                return;
+
+            if (!includeEmptyCollections && group.Members != null && group.Members.Count == 0)
+                group.Members = null;
         }
 
         internal static void CleanupUser(User? user, bool includeEmptyCollections)
@@ -84,40 +71,53 @@ namespace ditjson.Filtering
             }
         }
 
-        internal static void CleanupGroup(Group? group, bool includeEmptyCollections)
-        {
-            if (group == null)
-                return;
-
-            if (!includeEmptyCollections && group.Members != null && group.Members.Count == 0)
-                group.Members = null;
-        }
-
-        internal static void CleanupComputer(Computer? computer, bool includeEmptyCollections)
+        internal static bool ShouldIncludeComputer(Computer? computer, FilterOptions options)
         {
             if (computer == null)
-                return;
+                return false;
 
-            if (!includeEmptyCollections && computer.MemberOf != null && computer.MemberOf.Count == 0)
-                computer.MemberOf = null;
+            if (computer.IsDeleted && !options.IncludeDeleted)
+                return false;
 
-            if (computer.PasswordHashes != null && string.IsNullOrEmpty(computer.PasswordHashes.NtHash)
-                && string.IsNullOrEmpty(computer.PasswordHashes.LmHash))
-            {
-                computer.PasswordHashes = null;
-            }
+            return !options.ExcludeComputers;
+        }
 
-            if (computer.SupplementalCredentials != null && string.IsNullOrEmpty(computer.SupplementalCredentials.ClearTextPassword)
-                && (computer.SupplementalCredentials.KerberosKeys == null || computer.SupplementalCredentials.KerberosKeys.Count == 0))
-            {
-                computer.SupplementalCredentials = null;
-            }
+        internal static bool ShouldIncludeGroup(Group? group, FilterOptions options)
+        {
+            if (group == null)
+                return false;
 
-            if (computer.Recovery != null && string.IsNullOrEmpty(computer.Recovery.RecoveryPassword)
-                && computer.Recovery.RecoveryGuid == Guid.Empty && computer.Recovery.VolumeGuid == Guid.Empty)
-            {
-                computer.Recovery = null;
-            }
+            if (group.IsDeleted && !options.IncludeDeleted)
+                return false;
+
+            return !options.ExcludeGroups;
+        }
+
+        internal static bool ShouldIncludeUser(User? user, FilterOptions? options)
+        {
+            if (user == null || options == null)
+                return false;
+
+            if (user.IsDeleted && !options.IncludeDeleted)
+                return false;
+
+            if (options.ExcludeDisabled && user.UserAccountControl?.Contains("ACCOUNTDISABLE") == true)
+                return false;
+
+            if (options.ExcludeLockedOut && user.UserAccountControl?.Contains("LOCKOUT") == true)
+                return false;
+
+            return true;
+        }
+
+        internal class FilterOptions
+        {
+            public bool ExcludeComputers { get; set; } = false;
+            public bool ExcludeDisabled { get; set; } = false;
+            public bool ExcludeGroups { get; set; } = false;
+            public bool ExcludeLockedOut { get; set; } = false;
+            public bool IncludeDeleted { get; set; } = false;
+            public bool IncludeEmptyCollections { get; set; } = false;
         }
     }
 }

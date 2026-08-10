@@ -1,10 +1,35 @@
-using System;
 using System.Collections.Generic;
 
 namespace ditjson.Decoders
 {
     internal static class FlagsDecoder
     {
+        internal static string DecodeGroupType(int groupType)
+        {
+            if ((groupType & 0x80000000) != 0) return "SAM_DOMAIN_GROUP";
+            if ((groupType & 0x00000002) != 0) return "SAM_LOCAL_GROUP";
+            if ((groupType & 0x00000001) != 0) return "SAM_SECURITY_GROUP";
+
+            return "SAM_GLOBAL_GROUP";
+        }
+
+        internal static string DecodeSAMAccountType(int samType)
+        {
+            return samType switch
+            {
+                0x30000000 => "User",
+                0x30000001 => "Computer",
+                0x30000002 => "Trust",
+                0x10000000 => "SAM_GROUP_OBJECT",
+                0x10000001 => "SAM_NON_SECURITY_GROUP_OBJECT",
+                0x20000000 => "SAM_ALIAS_OBJECT",
+                0x20000001 => "SAM_NON_SECURITY_ALIAS_OBJECT",
+                0x40000000 => "SAM_APP_BASIC_GROUP",
+                0x40000001 => "SAM_APP_QUERY_GROUP",
+                _ => "Unknown"
+            };
+        }
+
         internal static List<string> DecodeUAC(int uacValue)
         {
             var flags = new List<string>();
@@ -30,32 +55,6 @@ namespace ditjson.Decoders
             if ((uacValue & 0x1000000) != 0) flags.Add("TRUSTED_TO_AUTH_FOR_DELEGATION");
 
             return flags;
-        }
-
-        internal static string DecodeSAMAccountType(int samType)
-        {
-            return samType switch
-            {
-                0x30000000 => "User",
-                0x30000001 => "Computer",
-                0x30000002 => "Trust",
-                0x10000000 => "SAM_GROUP_OBJECT",
-            0x10000001 => "SAM_NON_SECURITY_GROUP_OBJECT",
-                0x20000000 => "SAM_ALIAS_OBJECT",
-            0x20000001 => "SAM_NON_SECURITY_ALIAS_OBJECT",
-                0x40000000 => "SAM_APP_BASIC_GROUP",
-            0x40000001 => "SAM_APP_QUERY_GROUP",
-                _ => "Unknown"
-        };
-        }
-
-        internal static string DecodeGroupType(int groupType)
-        {
-            if ((groupType & 0x80000000) != 0) return "SAM_DOMAIN_GROUP";
-            if ((groupType & 0x00000002) != 0) return "SAM_LOCAL_GROUP";
-            if ((groupType & 0x00000001) != 0) return "SAM_SECURITY_GROUP";
-
-            return "SAM_GLOBAL_GROUP";
         }
     }
 }

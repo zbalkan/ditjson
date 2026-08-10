@@ -37,37 +37,37 @@ namespace ditjson.Output
         }
     }
 
+    internal sealed class ExportMetadata
+    {
+        [JsonPropertyName("ditjsonVersion")]
+        public string DitjsonVersion { get; set; } = string.Empty;
+
+        [JsonPropertyName("exportDate")]
+        public string ExportDate { get; set; } = string.Empty;
+
+        [JsonPropertyName("totalComputers")]
+        public int TotalComputers { get; set; }
+
+        [JsonPropertyName("totalGroups")]
+        public int TotalGroups { get; set; }
+
+        [JsonPropertyName("totalUsers")]
+        public int TotalUsers { get; set; }
+    }
+
     internal sealed class StructuredOutput
     {
+        [JsonPropertyName("computers")]
+        public List<Computer> Computers { get; set; } = new();
+
+        [JsonPropertyName("groups")]
+        public List<Group> Groups { get; set; } = new();
+
         [JsonPropertyName("metadata")]
         public ExportMetadata Metadata { get; set; } = new();
 
         [JsonPropertyName("users")]
         public List<User> Users { get; set; } = new();
-
-        [JsonPropertyName("groups")]
-        public List<Group> Groups { get; set; } = new();
-
-        [JsonPropertyName("computers")]
-        public List<Computer> Computers { get; set; } = new();
-    }
-
-    internal sealed class ExportMetadata
-    {
-        [JsonPropertyName("exportDate")]
-        public string ExportDate { get; set; } = string.Empty;
-
-        [JsonPropertyName("ditjsonVersion")]
-        public string DitjsonVersion { get; set; } = string.Empty;
-
-        [JsonPropertyName("totalUsers")]
-        public int TotalUsers { get; set; }
-
-        [JsonPropertyName("totalGroups")]
-        public int TotalGroups { get; set; }
-
-        [JsonPropertyName("totalComputers")]
-        public int TotalComputers { get; set; }
     }
 
     [JsonSourceGenerationOptions(

@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.Isam.Esent.Interop;
 using ditjson.Models;
+using Microsoft.Isam.Esent.Interop;
 
 namespace ditjson.Extractors
 {
@@ -18,24 +18,24 @@ namespace ditjson.Extractors
             try
             {
                 using var table = new Table(session, dbid, "datatable", OpenTableGrbit.ReadOnly);
-                    var columnDict = Api.GetColumnDictionary(session, table);
-                    var userDict = users.ToDictionary(u => u.RecordId);
+                var columnDict = Api.GetColumnDictionary(session, table);
+                var userDict = users.ToDictionary(u => u.RecordId);
 
-                    Api.JetSetTableSequential(session, table, SetTableSequentialGrbit.None);
-                    Api.MoveBeforeFirst(session, table);
+                Api.JetSetTableSequential(session, table, SetTableSequentialGrbit.None);
+                Api.MoveBeforeFirst(session, table);
 
                 var recordId = 1;
-                    while (Api.TryMoveNext(session, table))
+                while (Api.TryMoveNext(session, table))
+                {
+                    var currentRecordId = ColumnExtractor.GetRecordId(session, table, columnDict, recordId);
+                    if (userDict.TryGetValue(currentRecordId, out var user))
                     {
-                        var currentRecordId = ColumnExtractor.GetRecordId(session, table, columnDict, recordId);
-                        if (userDict.TryGetValue(currentRecordId, out var user))
-                        {
-                            ExtractHistoryForUser(session, table, columnDict, user, bootkey);
-                        }
-                        recordId++;
+                        ExtractHistoryForUser(session, table, columnDict, user, bootkey);
                     }
+                    recordId++;
+                }
 
-                    Api.JetResetTableSequential(session, table, ResetTableSequentialGrbit.None);
+                Api.JetResetTableSequential(session, table, ResetTableSequentialGrbit.None);
             }
             catch (Exception ex)
             {
@@ -63,6 +63,35 @@ namespace ditjson.Extractors
             {
                 Console.Error.WriteLine($"[!] Error extracting password history for user {user.SamAccountName}: {ex.Message}");
             }
+        }
+
+        private static bool isZeroHash(byte[] hash)
+        {
+            if (hash == null || hash.Length < 16)
+                return true;
+
+            for (var i = 0; i < 16; i++)
+            {
+                if (hash[i] != 0)
+                    return false;
+            }
+
+            return true;
+        }
+
+        private static bool looksEncrypted(byte[] data, int offset)
+        {
+            // Encrypted hashes have salt prefix (8 bytes) followed by ciphertext
+            // Look for entropy patterns typical of encrypted data
+            if (offset + 24 > data.Length)
+                return false;
+
+            // Sample first 8 bytes (salt) - should have some entropy
+            var salt = new byte[8];
+            Array.Copy(data, offset, salt, 0, 8);
+
+            var uniqueBytes = salt.Distinct().Count();
+            return uniqueBytes > 2; // Real salt should have decent entropy
         }
 
         private static List<string> ParsePasswordHistory(byte[] data, byte[] bootkey)
@@ -129,35 +158,6 @@ namespace ditjson.Extractors
             {
                 return hashes;
             }
-        }
-
-        private static bool looksEncrypted(byte[] data, int offset)
-        {
-            // Encrypted hashes have salt prefix (8 bytes) followed by ciphertext
-            // Look for entropy patterns typical of encrypted data
-            if (offset + 24 > data.Length)
-                return false;
-
-            // Sample first 8 bytes (salt) - should have some entropy
-            var salt = new byte[8];
-            Array.Copy(data, offset, salt, 0, 8);
-
-            var uniqueBytes = salt.Distinct().Count();
-            return uniqueBytes > 2; // Real salt should have decent entropy
-        }
-
-        private static bool isZeroHash(byte[] hash)
-        {
-            if (hash == null || hash.Length < 16)
-                return true;
-
-            for (var i = 0; i < 16; i++)
-            {
-                if (hash[i] != 0)
-                    return false;
-            }
-
-            return true;
         }
     }
 }
