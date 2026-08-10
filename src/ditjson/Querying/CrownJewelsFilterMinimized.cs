@@ -54,11 +54,6 @@ namespace ditjson.Querying
                 {
                     foreach (var q in qs.Take(9))
                     {
-                        if (q is null || q.P is null || q.F is null)
-                        {
-                            continue;
-                        }
-
                         if (q.P(u))
                         {
                             if (tot++ > 0)
@@ -75,11 +70,6 @@ namespace ditjson.Querying
                 // Process computers
                 foreach (var c in comps.EnumerateArray())
                 {
-                    if (qs[9] is null || qs[9].P is null || qs[9].F is null)
-                    {
-                        continue;
-                    }
-
                     if (qs[9].P(c))
                     {
                         if (tot++ > 0)
@@ -207,16 +197,6 @@ namespace ditjson.Querying
         // Consolidated field projections
         private static class F
         {
-            public static readonly string[] AdminsHashes = C(Base, Hashes);
-
-            public static readonly string[] Computers = C(Base, Comp, new[] { "passwordLastSet", "passwordHashes" });
-
-            public static readonly string[] Services = C(Base, Ctrl, new[] { "passwordLastSet" });
-
-            public static readonly string[] WithCreds = C(Base, Creds);
-
-            public static readonly string[] WithHashes = C(Base, Ctrl, new[] { "passwordHashes", "lastLogon" });
-
             private static readonly string[] Base = { "name", "samAccountName", "objectSid" };
 
             private static readonly string[] Comp = { "dnsHostName", "operatingSystem" };
@@ -227,6 +207,16 @@ namespace ditjson.Querying
 
             private static readonly string[] Hashes = { "passwordHashes", "lastLogon", "passwordLastSet" };
 
+            public static readonly string[] AdminsHashes = C(Base, Hashes);
+
+            public static readonly string[] Computers = C(Base, Comp, new[] { "passwordLastSet", "passwordHashes" });
+
+            public static readonly string[] Services = C(Base, Ctrl, new[] { "passwordLastSet" });
+
+            public static readonly string[] WithCreds = C(Base, Creds);
+
+            public static readonly string[] WithHashes = C(Base, Ctrl, new[] { "passwordHashes", "lastLogon" });
+
             private static string[] C(params string[][] sets) => sets.SelectMany(x => x).ToArray();
         }
 
@@ -234,9 +224,9 @@ namespace ditjson.Querying
         private sealed class Q
         {
             public int C { get; set; }
-            public string[]? F { get; init; }
-            public string? N { get; init; }
-            public Func<JsonElement, bool>? P { get; init; }
+            public required string[] F { get; init; }
+            public required string N { get; init; }
+            public required Func<JsonElement, bool> P { get; init; }
         }
     }
 }

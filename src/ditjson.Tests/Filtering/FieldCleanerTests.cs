@@ -78,10 +78,12 @@ public class FieldCleanerTests
     public void CleanUser_WithEmptyStringsInUserAccountControl_RemovesThem()
     {
         // Arrange
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         var user = new User
         {
             UserAccountControl = ["SCRIPT", "", "ACCOUNTDISABLE", null, "   "]
         };
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
 
         // Act
         FieldCleaner.CleanUser(user);

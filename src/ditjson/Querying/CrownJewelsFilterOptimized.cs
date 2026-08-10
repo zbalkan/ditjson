@@ -259,16 +259,6 @@ namespace ditjson.Querying
 
         private static class FieldProjections
         {
-            public static readonly string[] AdminsWithHashes = Compose(Base, Hashes);
-
-            public static readonly string[] Computers = Compose(Base, ComputerExtended, new[] { "passwordLastSet", "passwordHashes" });
-
-            public static readonly string[] ServiceAccounts = Compose(Base, Uac, new[] { "passwordLastSet" });
-
-            public static readonly string[] WithCredentials = Compose(Base, Credentials);
-
-            public static readonly string[] WithHashes = Compose(Base, Uac, new[] { "passwordHashes", "lastLogon" });
-
             private static readonly string[] Base = { "name", "samAccountName", "objectSid" };
 
             private static readonly string[] ComputerExtended = { "dnsHostName", "operatingSystem" };
@@ -279,15 +269,25 @@ namespace ditjson.Querying
 
             private static readonly string[] Uac = { "userAccountControl" };
 
+            public static readonly string[] AdminsWithHashes = Compose(Base, Hashes);
+
+            public static readonly string[] Computers = Compose(Base, ComputerExtended, new[] { "passwordLastSet", "passwordHashes" });
+
+            public static readonly string[] ServiceAccounts = Compose(Base, Uac, new[] { "passwordLastSet" });
+
+            public static readonly string[] WithCredentials = Compose(Base, Credentials);
+
+            public static readonly string[] WithHashes = Compose(Base, Uac, new[] { "passwordHashes", "lastLogon" });
+
             private static string[] Compose(params string[][] sets) => sets.SelectMany(x => x).ToArray();
         }
 
         private sealed class QueryContext
         {
             public int Count { get; set; }
-            public string[]? Fields { get; init; }
-            public string? Name { get; init; }
-            public Func<JsonElement, bool>? Predicate { get; init; }
+            public required string[] Fields { get; init; }
+            public required string Name { get; init; }
+            public required Func<JsonElement, bool> Predicate { get; init; }
         }
     }
 }
