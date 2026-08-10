@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ditjson.Models;
@@ -9,33 +8,74 @@ namespace ditjson.Output
 {
     internal static class JsonOutputFormatter
     {
-        [RequiresUnreferencedCode("Calls System.Text.Json.JsonSerializer.Serialize<TValue>(TValue, JsonSerializerOptions)")]
+        private static readonly StructuredOutputJsonContext JsonContext = new(new JsonSerializerOptions
+        {
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+            WriteIndented = true,
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        });
+
         public static string FormatStructuredOutput(List<User> users, List<Group> groups,
             List<Computer> computers)
         {
-            var output = new
+            var output = new StructuredOutput
             {
-                metadata = new
+                Metadata = new ExportMetadata
                 {
-                    exportDate = DateTime.UtcNow.ToString("O"),
-                    ditjsonVersion = "1.0.2",
-                    totalUsers = users.Count,
-                    totalGroups = groups.Count,
-                    totalComputers = computers.Count
+                    ExportDate = DateTime.UtcNow.ToString("O"),
+                    DitjsonVersion = "1.0.2",
+                    TotalUsers = users.Count,
+                    TotalGroups = groups.Count,
+                    TotalComputers = computers.Count
                 },
-                users = users,
-                groups = groups,
-                computers = computers
+                Users = users,
+                Groups = groups,
+                Computers = computers
             };
 
-            var options = new JsonSerializerOptions
-            {
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-                WriteIndented = true,
-                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-            };
-
-            return JsonSerializer.Serialize(output, options);
+            return JsonSerializer.Serialize(output, JsonContext.StructuredOutput);
         }
+    }
+
+    internal sealed class StructuredOutput
+    {
+        [JsonPropertyName("metadata")]
+        public ExportMetadata Metadata { get; set; } = new();
+
+        [JsonPropertyName("users")]
+        public List<User> Users { get; set; } = new();
+
+        [JsonPropertyName("groups")]
+        public List<Group> Groups { get; set; } = new();
+
+        [JsonPropertyName("computers")]
+        public List<Computer> Computers { get; set; } = new();
+    }
+
+    internal sealed class ExportMetadata
+    {
+        [JsonPropertyName("exportDate")]
+        public string ExportDate { get; set; } = string.Empty;
+
+        [JsonPropertyName("ditjsonVersion")]
+        public string DitjsonVersion { get; set; } = string.Empty;
+
+        [JsonPropertyName("totalUsers")]
+        public int TotalUsers { get; set; }
+
+        [JsonPropertyName("totalGroups")]
+        public int TotalGroups { get; set; }
+
+        [JsonPropertyName("totalComputers")]
+        public int TotalComputers { get; set; }
+    }
+
+    [JsonSourceGenerationOptions(
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        WriteIndented = true,
+        UseStringEnumConverter = true)]
+    [JsonSerializable(typeof(StructuredOutput))]
+    internal partial class StructuredOutputJsonContext : JsonSerializerContext
+    {
     }
 }

@@ -18,6 +18,10 @@
     <InternalsVisibleTo Include="ditjson.Tests" />
   </ItemGroup>
     <PropertyGroup>
+        <IsTrimmable>true</IsTrimmable>
+        <VerifyReferenceTrimCompatibility>true</VerifyReferenceTrimCompatibility>
+    </PropertyGroup>
+    <PropertyGroup>
         <PublishSingleFile>true</PublishSingleFile>
         <PublishReadyToRun>true</PublishReadyToRun>
         <PublishTrimmed>true</PublishTrimmed>
