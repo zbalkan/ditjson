@@ -14,50 +14,50 @@ namespace ditjson.Extractors
             var user = new User
             {
                 RecordId = recordId,
-                Name = ColumnExtractor.GetString(session, table, columnDict, "ATTm589825")!,
+                Name = ColumnExtractor.GetString(session, table, columnDict, NtdsColumnNames.ObjectName)!,
                 ObjectClass = "user",
                 ObjectGuid = GuidDecoder.Decode(ColumnExtractor.GetBinary(session, table,
-                    columnDict, "ATTk589826")),
+                    columnDict, NtdsColumnNames.ObjectGuid)),
                 ObjectSid = SidDecoder.Decode(ColumnExtractor.GetBinary(session, table,
                     columnDict, NtdsColumnNames.ObjectSid)),
 
                 SamAccountName = ColumnExtractor.GetString(session, table, columnDict,
                     NtdsColumnNames.SamAccountName)!,
                 UserPrincipalName = ColumnExtractor.GetString(session, table, columnDict,
-                    "ATTm590480")!,
+                    NtdsColumnNames.UserPrincipalName)!,
 
                 WhenCreated = TimestampDecoder.DecodeDsTime(ColumnExtractor.GetInt64(
-                    session, table, columnDict, "ATTl131074"))!,
+                    session, table, columnDict, NtdsColumnNames.WhenCreated))!,
                 WhenChanged = TimestampDecoder.DecodeDsTime(ColumnExtractor.GetInt64(
-                    session, table, columnDict, "ATTl131075"))!,
+                    session, table, columnDict, NtdsColumnNames.WhenChanged))!,
 
                 PasswordLastSet = TimestampDecoder.DecodeFromInt64(ColumnExtractor.GetInt64(
-                    session, table, columnDict, "ATTq589920"))!,
+                    session, table, columnDict, NtdsColumnNames.PasswordLastSet))!,
                 LastLogon = TimestampDecoder.DecodeFromInt64(ColumnExtractor.GetInt64(
-                    session, table, columnDict, "ATTq589876"))!,
+                    session, table, columnDict, NtdsColumnNames.LastLogon))!,
                 LastLogonTimeStamp = TimestampDecoder.DecodeFromInt64(
                     ColumnExtractor.GetInt64(session, table, columnDict,
-                        "ATTq591520"))!,
+                        NtdsColumnNames.LastLogonTimestamp))!,
                 AccountExpires = TimestampDecoder.DecodeFromInt64(ColumnExtractor.GetInt64(
-                    session, table, columnDict, "ATTq589983"))!,
+                    session, table, columnDict, NtdsColumnNames.AccountExpires))!,
                 BadPwdTime = TimestampDecoder.DecodeFromInt64(ColumnExtractor.GetInt64(
-                    session, table, columnDict, "ATTq589873"))!,
+                    session, table, columnDict, NtdsColumnNames.BadPasswordTime))!,
 
                 LogonCount = ColumnExtractor.GetInt32(session, table, columnDict,
-                    "ATTj589993"),
+                    NtdsColumnNames.LogonCount),
                 BadPwdCount = ColumnExtractor.GetInt32(session, table, columnDict,
-                    "ATTj589836"),
+                    NtdsColumnNames.BadPasswordCount),
                 PrimaryGroupId = ColumnExtractor.GetInt32(session, table, columnDict,
-                    "ATTj589922"),
+                    NtdsColumnNames.PrimaryGroupId),
                 DialInAccessPermission = ColumnExtractor.GetInt32(session, table, columnDict,
-                    "ATTi590943"),
+                    NtdsColumnNames.DialInAccessPermission),
 
                 IsDeleted = ColumnExtractor.GetInt32(session, table, columnDict,
-                    "ATTi131120") != 0
+                    NtdsColumnNames.IsDeleted) != 0
             };
 
             var uacValue = ColumnExtractor.GetInt32(session, table, columnDict,
-                "ATTj589832");
+                NtdsColumnNames.UserAccountControl);
             if (uacValue != 0)
             {
                 user.UserAccountControl = FlagsDecoder.DecodeUAC(uacValue);

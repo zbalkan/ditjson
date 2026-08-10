@@ -14,35 +14,35 @@ namespace ditjson.Extractors
             var computer = new Computer
             {
                 RecordId = recordId,
-                Name = ColumnExtractor.GetString(session, table, columnDict, "ATTm589825")!,
+                Name = ColumnExtractor.GetString(session, table, columnDict, NtdsColumnNames.ObjectName)!,
                 ObjectClass = "computer",
                 ObjectGuid = GuidDecoder.Decode(ColumnExtractor.GetBinary(session, table,
-                    columnDict, "ATTk589826")),
+                    columnDict, NtdsColumnNames.ObjectGuid)),
                 ObjectSid = SidDecoder.Decode(ColumnExtractor.GetBinary(session, table,
                     columnDict, NtdsColumnNames.ObjectSid)),
 
                 SamAccountName = ColumnExtractor.GetString(session, table, columnDict,
                     NtdsColumnNames.SamAccountName)!,
                 DnsHostName = ColumnExtractor.GetString(session, table, columnDict,
-                    "ATTm590443")!,
+                    NtdsColumnNames.DnsHostName)!,
                 OperatingSystem = ColumnExtractor.GetString(session, table, columnDict,
-                    "ATTm590187")!,
+                    NtdsColumnNames.OperatingSystem)!,
                 OperatingSystemVersion = ColumnExtractor.GetString(session, table, columnDict,
-                    "ATTm590188")!,
+                    NtdsColumnNames.OperatingSystemVersion)!,
 
                 WhenCreated = TimestampDecoder.DecodeDsTime(ColumnExtractor.GetInt64(
-                    session, table, columnDict, "ATTl131074"))!,
+                    session, table, columnDict, NtdsColumnNames.WhenCreated))!,
                 WhenChanged = TimestampDecoder.DecodeDsTime(ColumnExtractor.GetInt64(
-                    session, table, columnDict, "ATTl131075"))!,
+                    session, table, columnDict, NtdsColumnNames.WhenChanged))!,
 
                 PasswordLastSet = TimestampDecoder.DecodeFromInt64(ColumnExtractor.GetInt64(
-                    session, table, columnDict, "ATTq589920"))!,
+                    session, table, columnDict, NtdsColumnNames.PasswordLastSet))!,
 
                 DialInAccessPermission = ColumnExtractor.GetInt32(session, table, columnDict,
-                    "ATTi590943"),
+                    NtdsColumnNames.DialInAccessPermission),
 
                 IsDeleted = ColumnExtractor.GetInt32(session, table, columnDict,
-                    "ATTi131120") != 0,
+                    NtdsColumnNames.IsDeleted) != 0,
 
                 MemberOf = []
             };

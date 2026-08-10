@@ -14,10 +14,10 @@ namespace ditjson.Extractors
             var group = new Group
             {
                 RecordId = recordId,
-                Name = ColumnExtractor.GetString(session, table, columnDict, "ATTm589825")!,
+                Name = ColumnExtractor.GetString(session, table, columnDict, NtdsColumnNames.ObjectName)!,
                 ObjectClass = "group",
                 ObjectGuid = GuidDecoder.Decode(ColumnExtractor.GetBinary(session, table,
-                    columnDict, "ATTk589826")),
+                    columnDict, NtdsColumnNames.ObjectGuid)),
                 ObjectSid = SidDecoder.Decode(ColumnExtractor.GetBinary(session, table,
                     columnDict, NtdsColumnNames.ObjectSid)),
 
@@ -25,12 +25,12 @@ namespace ditjson.Extractors
                     NtdsColumnNames.SamAccountName)!,
 
                 WhenCreated = TimestampDecoder.DecodeDsTime(ColumnExtractor.GetInt64(
-                    session, table, columnDict, "ATTl131074"))!,
+                    session, table, columnDict, NtdsColumnNames.WhenCreated))!,
                 WhenChanged = TimestampDecoder.DecodeDsTime(ColumnExtractor.GetInt64(
-                    session, table, columnDict, "ATTl131075"))!,
+                    session, table, columnDict, NtdsColumnNames.WhenChanged))!,
 
                 IsDeleted = ColumnExtractor.GetInt32(session, table, columnDict,
-                    "ATTi131120") != 0,
+                    NtdsColumnNames.IsDeleted) != 0,
 
                 Members = []
             };
