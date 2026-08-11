@@ -56,8 +56,6 @@ namespace ditjson.Filtering
             user.SamAccountName = CleanString(user.SamAccountName);
             user.UserPrincipalName = CleanString(user.UserPrincipalName);
             user.SamAccountType = CleanString(user.SamAccountType);
-            user.Certificate = CleanString(user.Certificate);
-
             if (user.PrimaryGroupId <= 0)
             {
                 user.PrimaryGroupId = 0;

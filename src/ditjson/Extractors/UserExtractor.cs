@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ditjson.Decoders;
 using ditjson.Models;
 using Microsoft.Isam.Esent.Interop;
@@ -27,8 +28,8 @@ namespace ditjson.Extractors
                     NtdsColumnNames.SamAccountName)!,
                 UserPrincipalName = ColumnExtractor.GetString(session, table, columnDict,
                     NtdsColumnNames.UserPrincipalName)!,
-                Certificate = EncodeBinary(ColumnExtractor.GetBinary(session, table, columnDict,
-                    NtdsColumnNames.UserCertificate)),
+                Certificates = ColumnExtractor.GetBinaries(session, table, columnDict,
+                    NtdsColumnNames.UserCertificate).Select(Convert.ToBase64String).ToList(),
 
                 WhenCreated = TimestampDecoder.DecodeDsTime(ColumnExtractor.GetInt64(
                     session, table, columnDict, NtdsColumnNames.WhenCreated))!,

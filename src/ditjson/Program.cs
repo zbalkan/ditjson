@@ -117,6 +117,11 @@ namespace ditjson
             Api.JetAttachDatabase(session, opts.Ntds, AttachDatabaseGrbit.ReadOnly);
             Api.JetOpenDatabase(session, opts.Ntds, null, out var dbid, OpenDatabaseGrbit.ReadOnly);
 
+            // Attribute columns are physically multivalued in NTDS, including
+            // schema single-value attributes. Keep every related column read in
+            // one snapshot so a record and its tagged values remain consistent.
+            using var transaction = new Transaction(session);
+
             Console.Error.WriteLine("[*] Extracting structured objects (users, groups, computers)...");
             var selectedTables = FilterTables(session, dbid);
             var filterOptions = new ObjectFilter.FilterOptions {
@@ -147,9 +152,11 @@ namespace ditjson
                 }
             }
 
-            return opts.Timeline
+            var json = opts.Timeline
                 ? JsonOutputFormatter.FormatTimeline(users, groups, computers)
                 : JsonOutputFormatter.FormatStructuredOutput(users, groups, computers, databaseMetadata);
+            transaction.Commit(CommitTransactionGrbit.None);
+            return json;
         }
 
         private static List<string> FilterTables(Session session, JET_DBID dbid)

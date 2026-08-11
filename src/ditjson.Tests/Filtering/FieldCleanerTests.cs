@@ -202,8 +202,7 @@ public class FieldCleanerTests
         var user = new User {
             Name = "   ",
             SamAccountName = "\t",
-            UserPrincipalName = null,
-            Certificate = "  \n  "
+            UserPrincipalName = null
         };
 
         // Act
@@ -213,6 +212,5 @@ public class FieldCleanerTests
         Assert.IsNull(user.Name);
         Assert.IsNull(user.SamAccountName);
         Assert.IsNull(user.UserPrincipalName);
-        Assert.IsNull(user.Certificate);
     }
 }

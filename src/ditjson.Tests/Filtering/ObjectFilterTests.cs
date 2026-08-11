@@ -74,7 +74,8 @@ public class ObjectFilterTests
             Name = "jdoe",
             MemberOf = [],
             Ancestors = [],
-            PasswordHistory = []
+            PasswordHistory = [],
+            Certificates = []
         };
 
         // Act
@@ -84,6 +85,7 @@ public class ObjectFilterTests
         Assert.IsNull(user.MemberOf);
         Assert.IsNull(user.Ancestors);
         Assert.IsNull(user.PasswordHistory);
+        Assert.IsNull(user.Certificates);
     }
 
     [TestMethod]

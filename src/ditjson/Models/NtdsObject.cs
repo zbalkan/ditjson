@@ -101,7 +101,7 @@ namespace ditjson.Models
         public List<NtdsObject>? Ancestors { get; set; }
         public int BadPwdCount { get; set; }
         public string? BadPwdTime { get; set; }
-        public string? Certificate { get; set; }
+        public List<string>? Certificates { get; set; }
         public int DialInAccessPermission { get; set; }
         public string? LastLogon { get; set; }
         public string? LastLogonTimeStamp { get; set; }

@@ -69,6 +69,20 @@ public class JsonOutputFormatterTests
     }
 
     [TestMethod]
+    public void FormatStructuredOutput_PreservesAllUserCertificates()
+    {
+        var user = new User { Certificates = ["first", "second"] };
+
+        var json = JsonOutputFormatter.FormatStructuredOutput([user], [], []);
+
+        using var document = JsonDocument.Parse(json);
+        var certificates = document.RootElement.GetProperty("users")[0].GetProperty("Certificates");
+        Assert.AreEqual(2, certificates.GetArrayLength());
+        Assert.AreEqual("first", certificates[0].GetString());
+        Assert.AreEqual("second", certificates[1].GetString());
+    }
+
+    [TestMethod]
     public void FormatStructuredOutput_UsesCompactMemberOfReferences()
     {
         var user = new User {

@@ -14,6 +14,7 @@ dump every column from every ESE table.
 ## Features
 
 - Extracts users, groups, computers, decoded attributes, and relationships.
+- Reads NTDS tagged values explicitly (including every stored user certificate) within a consistent read transaction.
 - Produces one output format: JSON, either on standard output or in a file.
 - Reimplements the relevant `ntdsxtract` processing in the executable itself.
 - Decrypts NT and LM password hashes when the matching `SYSTEM` registry hive
