@@ -10,25 +10,13 @@ concurrency:
   group: release
   cancel-in-progress: false
 
+env:
+  RID: win-x64
+  ARTIFACT: ditjson-win-x64
+
 jobs:
   build-and-release:
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            rid: linux-x64
-            artifact: ditjson-linux-x64
-
-          - os: windows-latest
-            rid: win-x64
-            artifact: ditjson-win-x64
-
-          - os: macos-latest
-            rid: osx-x64
-            artifact: ditjson-osx-x64
+    runs-on: windows-latest
 
     steps:
       - uses: actions/checkout@v7
@@ -37,12 +25,6 @@ jobs:
         uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
-
-      - name: Install Linux AOT dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install clang zlib1g-dev
 
       - name: Resolve release version
         id: version
@@ -93,15 +75,15 @@ jobs:
         run: >
           dotnet publish src/ditjson/ditjson.csproj
           --configuration Release
-          --runtime ${{ matrix.rid }}
+          --runtime ${{ env.RID }}
           --self-contained
-          --output publish/${{ matrix.rid }}
+          --output publish/${{ env.RID }}
 
-      - name: Upload artifacts
+      - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ matrix.artifact }}
-          path: publish/${{ matrix.rid }}/
+          name: ${{ env.ARTIFACT }}
+          path: publish/${{ env.RID }}/ditjson.exe
 
   create-release:
     needs: build-and-release
@@ -148,32 +130,19 @@ jobs:
             exit 1
           fi
 
-      - name: Download all artifacts
+      - name: Download artifact
         uses: actions/download-artifact@v8
         with:
+          name: ${{ env.ARTIFACT }}
           path: artifacts
 
-      - name: Package release artifacts
+      - name: Prepare release asset
         shell: bash
         run: |
           set -euo pipefail
 
           mkdir -p release
-
-          (
-            cd artifacts/ditjson-linux-x64
-            zip -r ../../release/ditjson-linux-x64.zip .
-          )
-
-          (
-            cd artifacts/ditjson-win-x64
-            zip -r ../../release/ditjson-win-x64.zip .
-          )
-
-          (
-            cd artifacts/ditjson-osx-x64
-            zip -r ../../release/ditjson-osx-x64.zip .
-          )
+          cp artifacts/ditjson.exe "release/${ARTIFACT}.exe"
 
       - name: Create and push release tag
         env:
@@ -199,4 +168,4 @@ jobs:
           gh release create "$RELEASE_TAG" \
             --title "Release $RELEASE_TAG" \
             --generate-notes \
-            release/*.zip
+            "release/${ARTIFACT}.exe"

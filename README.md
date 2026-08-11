@@ -1,7 +1,9 @@
 # ditjson
 
 `ditjson` extracts useful Active Directory information from an offline
-`NTDS.dit` database and writes it as JSON.
+`NTDS.dit` database and writes it as JSON. It is Windows-only, since it
+relies on `Microsoft.Database.ManagedEsent` to read the native Windows ESE
+engine (`esent.dll`).
 
 It is a single-tool replacement for the older multi-stage workflow: there are
 no Python post-processing scripts and no CSV or table exports as intermediate
@@ -31,8 +33,8 @@ dump every column from every ESE table.
 ## Requirements
 
 - Windows (ManagedEsent uses the Windows ESE API)
-- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) when building
-  from source
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) only when
+  building or running from source; release artifacts are self-contained
 - An offline `NTDS.dit` database
 - Its matching `SYSTEM` registry hive when credential decryption is required
 
@@ -44,10 +46,12 @@ cd ditjson
 dotnet build src/ditjson.slnx --configuration Release
 ```
 
-To create a release build for a specific Windows runtime, for example x64:
+To create a self-contained release build for a specific runtime, use its
+[runtime identifier](https://learn.microsoft.com/dotnet/core/rid-catalog). For
+example, to publish for 64-bit Windows:
 
 ```powershell
-dotnet publish src/ditjson/ditjson.csproj --configuration Release --runtime win-x64
+dotnet publish src/ditjson/ditjson.csproj --configuration Release --runtime win-x64 --self-contained
 ```
 
 ## Usage
@@ -57,8 +61,7 @@ Usage: ditjson [options] <ntds.dit> [SYSTEM]
 
 Options:
   -o, --output <file>   Write JSON to a file instead of stdout
-  -t, --timeline        Write a chronological JSON timeline instead of
-                        structured objects
+  -t, --timeline        Write a chronological JSON timeline instead of structured objects
   -h, --help            Show help and exit
   -v, --version         Show version and exit
 ```
@@ -73,6 +76,14 @@ Help, version information, diagnostics, and progress are written to stderr so
 that stdout remains reserved for JSON. Run `ditjson --help` to display the
 command-line reference, or `ditjson --version` to display the installed
 version.
+
+The examples below assume that `ditjson.exe` is on `PATH`; use
+`.\ditjson.exe` from the directory containing it. When running from source,
+replace `ditjson` with:
+
+```text
+dotnet run --project src/ditjson/ditjson.csproj --
+```
 
 Extract directory information without decrypting credentials:
 
@@ -126,8 +137,17 @@ ditjson C:\evidence\ntds.dit C:\evidence\SYSTEM |
   ) | select(.ntHash != null or .lmHash != null)'
 ```
 
-The same query can be run against a saved export by replacing the first line
-with `jq '...' domain.json`.
+The same query can be run against a saved export without invoking `ditjson`:
+
+```powershell
+jq '(
+  .users[] |
+  {type: "user", name: (.SamAccountName // .Name), ntHash: .passwordHashes.ntHash, lmHash: .passwordHashes.lmHash}
+), (
+  .computers[] |
+  {type: "computer", name: (.SamAccountName // .Name), ntHash: .passwordHashes.ntHash, lmHash: .passwordHashes.lmHash}
+) | select(.ntHash != null or .lmHash != null)' domain.json
+```
 
 ## Output
 
@@ -137,18 +157,38 @@ collections of users, groups, and computers:
 ```json
 {
   "metadata": {
-    "ditjsonVersion": "1.0.2",
+    "database": {
+      "attachTime": "2026-08-10T11:42:17.0000000Z",
+      "consistentTime": "2026-08-10T11:41:53.0000000Z",
+      "creationTime": "2024-02-06T09:15:31.0000000Z",
+      "databaseTime": "0x00000000000A4E21",
+      "detachTime": "2026-08-10T11:44:02.0000000Z",
+      "fileFormatVersion": "0x00000620",
+      "fileType": "0x00000001",
+      "headerChecksum": "0x8A12BC34",
+      "isDirty": false,
+      "pageSize": 8192,
+      "recoveryTime": "2026-08-10T11:43:48.0000000Z",
+      "signature": "0x89ABCDEF",
+      "windowsVersion": "10.0 (20348) Service Pack 0"
+    },
+    "ditjsonVersion": "2.0.0",
     "exportDate": "2026-08-10T12:00:00.0000000Z",
     "totalComputers": 120,
     "totalGroups": 45,
-    "totalUsers": 250,
-    "database": {}
+    "totalUsers": 250
   },
   "users": [],
   "groups": [],
   "computers": []
 }
 ```
+
+The `metadata.database` object is populated directly from the ESE database
+header. It records file identity and format values, page size, database state,
+the Windows version recorded in the header, and available creation, attach,
+detach, consistency, and recovery timestamps. Timestamp properties that are
+not present or valid in the header are omitted from the JSON.
 
 The database contents determine which optional fields are present. Credential
 properties are populated only when the attributes exist, are supported, and
