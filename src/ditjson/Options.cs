@@ -12,5 +12,7 @@ namespace ditjson
         public string? System { get; set; }
 
         public bool Timeline { get; set; }
+
+        public bool All { get; set; }
     }
 }

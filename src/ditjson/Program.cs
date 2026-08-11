@@ -117,6 +117,15 @@ namespace ditjson
             Api.JetAttachDatabase(session, opts.Ntds, AttachDatabaseGrbit.ReadOnly);
             Api.JetOpenDatabase(session, opts.Ntds, null, out var dbid, OpenDatabaseGrbit.ReadOnly);
 
+            Dictionary<string, List<Dictionary<string, string>>>? allTables = null;
+            if (opts.All)
+            {
+                Console.Error.WriteLine("[*] Extracting all tables and columns...");
+                var tables = Api.GetTableNames(session, dbid).ToList();
+                allTables = NtdsData.ExtractTables(session, dbid, tables);
+                Console.Error.WriteLine($"[+] Extracted {tables.Count} table(s)");
+            }
+
             // Attribute columns are physically multivalued in NTDS, including
             // schema single-value attributes. Keep every related column read in
             // one snapshot so a record and its tagged values remain consistent.
@@ -154,7 +163,8 @@ namespace ditjson
 
             var json = opts.Timeline
                 ? JsonOutputFormatter.FormatTimeline(users, groups, computers)
-                : JsonOutputFormatter.FormatStructuredOutput(users, groups, computers, databaseMetadata);
+                : JsonOutputFormatter.FormatStructuredOutput(
+                    users, groups, computers, databaseMetadata, allTables);
             transaction.Commit(CommitTransactionGrbit.None);
             return json;
         }

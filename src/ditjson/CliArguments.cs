@@ -45,6 +45,12 @@ namespace ditjson
                     continue;
                 }
 
+                if (string.Equals(arg, "--all", StringComparison.OrdinalIgnoreCase))
+                {
+                    parsed.All = true;
+                    continue;
+                }
+
                 if (string.Equals(arg, "-o", StringComparison.OrdinalIgnoreCase) ||
                     string.Equals(arg, "--output", StringComparison.OrdinalIgnoreCase))
                 {
@@ -100,6 +106,12 @@ namespace ditjson
                 return CliParseResult.Error;
             }
 
+            if (parsed.All && parsed.Timeline)
+            {
+                error = "--all and --timeline cannot be used together.";
+                return CliParseResult.Error;
+            }
+
             options = parsed;
             return CliParseResult.Success;
         }
@@ -111,6 +123,7 @@ namespace ditjson
             writer.WriteLine("Options:");
             writer.WriteLine("  -o, --output <file>   Write JSON to a file instead of stdout");
             writer.WriteLine("  -t, --timeline        Write a chronological JSON timeline instead of structured objects");
+            writer.WriteLine("      --all             Dump every table and column from NTDS.dit as JSON");
             writer.WriteLine("  -h, --help            Show help and exit");
             writer.WriteLine("  -v, --version         Show version and exit");
         }

@@ -16,9 +16,17 @@ namespace ditjson.Output
         });
 
         public static string FormatStructuredOutput(List<User> users, List<Group> groups,
-            List<Computer> computers, DatabaseFileMetadata? database = null)
+            List<Computer> computers, DatabaseFileMetadata? database = null,
+            Dictionary<string, List<Dictionary<string, string>>>? tables = null)
         {
-            var output = new StructuredOutput {
+            var output = CreateStructuredOutput(users, groups, computers, database);
+            output.Tables = tables;
+
+            return JsonSerializer.Serialize(output, JsonContext.StructuredOutput);
+        }
+
+        private static StructuredOutput CreateStructuredOutput(List<User> users, List<Group> groups,
+            List<Computer> computers, DatabaseFileMetadata? database) => new StructuredOutput {
                 Metadata = new ExportMetadata {
                     ExportDate = DateTime.UtcNow.ToString("O"),
                     DitjsonVersion = typeof(JsonOutputFormatter).Assembly.GetName().Version?.ToString() ??
@@ -32,9 +40,6 @@ namespace ditjson.Output
                 Groups = groups,
                 Computers = computers
             };
-
-            return JsonSerializer.Serialize(output, JsonContext.StructuredOutput);
-        }
 
         public static string FormatTimeline(List<User> users, List<Group> groups,
             List<Computer> computers)
@@ -107,6 +112,9 @@ namespace ditjson.Output
 
         [JsonPropertyName("metadata")]
         public ExportMetadata Metadata { get; set; } = new();
+
+        [JsonPropertyName("tables")]
+        public Dictionary<string, List<Dictionary<string, string>>>? Tables { get; set; }
 
         [JsonPropertyName("users")]
         public List<User> Users { get; set; } = new();

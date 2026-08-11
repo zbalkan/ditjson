@@ -129,6 +129,7 @@ public class ProgramTests
         Assert.IsNull(options.System);
         Assert.IsNull(options.Output);
         Assert.IsFalse(options.Timeline);
+        Assert.IsFalse(options.All);
     }
 
     [TestMethod]
@@ -153,6 +154,27 @@ public class ProgramTests
         Assert.IsNull(error);
         Assert.IsNotNull(options);
         Assert.IsTrue(options!.Timeline);
+    }
+
+    [TestMethod]
+    public void Parser_AcceptsAllFlag()
+    {
+        var result = CliArguments.Parse(["--all", "ntds.dit"], out var options, out var error);
+
+        Assert.AreEqual(CliParseResult.Success, result);
+        Assert.IsNull(error);
+        Assert.IsNotNull(options);
+        Assert.IsTrue(options!.All);
+    }
+
+    [TestMethod]
+    public void Parser_RejectsAllWithTimeline()
+    {
+        var result = CliArguments.Parse(["ntds.dit", "--all", "--timeline"], out var options, out var error);
+
+        Assert.AreEqual(CliParseResult.Error, result);
+        Assert.IsNull(options);
+        Assert.Contains("cannot be used together", error!);
     }
 
     [TestMethod]
