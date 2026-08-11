@@ -34,12 +34,6 @@ cd ditjson
 dotnet build src/ditjson.slnx --configuration Release
 ```
 
-To create a self-contained release build for a specific runtime, use its runtime identifier](https://learn.microsoft.com/dotnet/core/rid-catalog). For example, to publish for 64-bit Windows:
-
-```powershell
-dotnet publish src/ditjson/ditjson.csproj --configuration Release --runtime win-x64 --self-contained
-```
-
 ## Usage
 
 ```text
