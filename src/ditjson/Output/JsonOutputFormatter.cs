@@ -21,7 +21,8 @@ namespace ditjson.Output
             var output = new StructuredOutput {
                 Metadata = new ExportMetadata {
                     ExportDate = DateTime.UtcNow.ToString("O"),
-                    DitjsonVersion = "1.0.2",
+                    DitjsonVersion = typeof(JsonOutputFormatter).Assembly.GetName().Version?.ToString() ??
+                                      string.Empty,
                     TotalUsers = users.Count,
                     TotalGroups = groups.Count,
                     TotalComputers = computers.Count,
